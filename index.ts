@@ -112,7 +112,8 @@ async function fetchMarkdown(slug: string): Promise<string | null> {
     const res = await fetch(`${BASE_URL}/en/${slug}.md`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
-    return stripBoilerplate(text);
+    const body = stripBoilerplate(text);
+    return `[View original](${BASE_URL}/en/${slug})\n\n${body}`;
   } catch (err) {
     console.warn(`Failed to fetch ${slug}: ${err}`);
     return null;
