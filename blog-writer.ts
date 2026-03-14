@@ -70,20 +70,24 @@ async function analyzeFileDiff(file: string, diff: string): Promise<string> {
 }
 
 async function main() {
+  const commit = process.argv[2] ?? "HEAD"
+
   // Derive output filename from commit timestamp — serves as idempotency key
-  const timestamp = (await Bun.$`git log -1 --format="%cd" --date=format:"%Y-%m-%d-%H%M%S"`.text()).trim()
+  const timestamp = (await Bun.$`git log -1 --format="%cd" --date=format:"%Y-%m-%d-%H%M%S" ${commit}`.text()).trim()
   const outputPath = `blog/posts/${timestamp}.md`
 
-  // Idempotency: skip if post already exists for this commit
-  const existing = Array.from(new Bun.Glob(outputPath).scanSync("."))
-  if (existing.length > 0) {
-    console.log(`Post already exists: ${outputPath}, skipping.`)
-    process.exit(0)
+  // Idempotency: skip if post already exists for this commit (bypass when testing a specific commit)
+  if (commit === "HEAD") {
+    const existing = Array.from(new Bun.Glob(outputPath).scanSync("."))
+    if (existing.length > 0) {
+      console.log(`Post already exists: ${outputPath}, skipping.`)
+      process.exit(0)
+    }
   }
 
   // Gather diffs
-  const stat = await Bun.$`git diff --stat HEAD^ HEAD -- docs/`.text()
-  const changelogDiff = await Bun.$`git show HEAD -- docs/changelog.md`.text()
+  const stat = await Bun.$`git diff --stat ${commit}^ ${commit} -- docs/`.text()
+  const changelogDiff = await Bun.$`git show ${commit} -- docs/changelog.md`.text()
 
   // Parse new version blocks — bail if nothing meaningful changed in the changelog
   const updateBlocks = parseNewUpdateBlocks(changelogDiff)
@@ -96,7 +100,7 @@ async function main() {
   const changedFiles = getAllChangedFiles(stat)
   const subagentInsights = await Promise.all(
     changedFiles.map(async file => {
-      const fileDiff = await Bun.$`git show HEAD --unified=0 -- docs/${file}`.text()
+      const fileDiff = await Bun.$`git show ${commit} --unified=0 -- docs/${file}`.text()
       const fullDiff = extractAddedLines(fileDiff, 300)
       if (!fullDiff.trim()) return null
       return analyzeFileDiff(file, fullDiff)
