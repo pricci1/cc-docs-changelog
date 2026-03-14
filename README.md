@@ -6,7 +6,7 @@ Scrapes all [Claude Code](https://code.claude.com) documentation pages (~56 page
 
 1. Fetches the docs nav to discover all page slugs
 2. Downloads each page as clean markdown into `docs/`
-3. A GitHub Actions workflow runs daily at 06:00 UTC, commits any changes, then calls Claude to write a digest post summarising what changed and why it matters
+3. A GitHub Actions workflow runs on schedule, commits any changes, then calls Claude to write a digest post summarising what changed and why it matters
 4. The blog is built as a static site and deployed to GitHub Pages
 
 ## Usage
