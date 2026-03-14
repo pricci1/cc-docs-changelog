@@ -1,4 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk"
+import { openrouter } from "@openrouter/ai-sdk-provider"
+import { generateText } from "ai"
 
 const SYSTEM_PROMPT = `You are a technical writer for a blog aimed at developers who use Claude Code daily.
 
@@ -109,17 +110,13 @@ Structure the post as:
 
 Output only the markdown post, no preamble or explanation.`
 
-  // Call Claude
-  const client = new Anthropic()
-  const msg = await client.messages.create({
-    model: "claude-opus-4-6",
-    max_tokens: 2048,
+  const { text: post } = await generateText({
+    model: openrouter("anthropic/claude-opus-4-6"),
+    maxOutputTokens: 2048,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],
   })
-
-  const post = msg.content[0].type === "text" ? msg.content[0].text : ""
-  if (!post.trim()) {
+  if (!post?.trim()) {
     console.error("Claude returned empty response")
     process.exit(1)
   }

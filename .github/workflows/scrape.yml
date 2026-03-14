@@ -49,7 +49,7 @@ jobs:
       - run: bun install
       - name: Generate post
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: bun run blog-writer.ts
       - name: Build site
         run: bun run blog/build.ts

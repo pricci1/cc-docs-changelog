@@ -35,5 +35,5 @@ index.ts                # doc scraper
 
 ## Setup
 
-- Add `ANTHROPIC_API_KEY` secret: repo Settings → Secrets → Actions
+- Add `OPENROUTER_API_KEY` secret: repo Settings → Secrets → Actions
 - Enable GitHub Pages: Settings → Pages → Source = "GitHub Actions"
