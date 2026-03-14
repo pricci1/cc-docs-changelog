@@ -56,7 +56,14 @@ function getAllChangedFiles(stat: string): string[] {
 
 const SUBAGENT_SYSTEM = `You analyze a single Claude Code documentation file diff.
 Extract key insights: what was added or changed, what it means for users.
-Be concise — 2-4 bullet points or sentences. No preamble.`
+Be concise — 1-3 bullet points or sentences per diff block. No preamble.
+
+Ignore the following — they carry no signal for users:
+- Wording or copy tweaks that don't change meaning (rephrasing, grammar fixes, tone adjustments)
+- Content moved between sections without modification
+- Formatting-only changes (whitespace, punctuation, heading levels)
+
+If a diff contains only the above, output nothing. Remember, no preamble.`
 
 // Uses flash-lite for cheap parallel extraction; pro model handles synthesis
 async function analyzeFileDiff(file: string, diff: string): Promise<string> {
