@@ -121,8 +121,8 @@ Structure the post as:
 Output only the markdown post, no preamble or explanation.`
 
   const { text: post } = await generateText({
-    model: openrouter("anthropic/claude-opus-4-6"),
-    maxOutputTokens: 2048,
+    model: openrouter("google/gemini-3.1-pro-preview"),
+    maxOutputTokens: 8192,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],
   })
