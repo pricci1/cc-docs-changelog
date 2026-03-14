@@ -8,19 +8,60 @@ permissions:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    outputs:
+      docs_changed: ${{ steps.commit.outputs.docs_changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - run: bun run index.ts
       - name: Commit and push if changed
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/
           if git diff --cached --quiet; then
             echo "No changes detected"
+            echo "docs_changed=false" >> $GITHUB_OUTPUT
           else
             git commit -m "docs: update reference docs $(date -u +%Y-%m-%d)"
             git push
+            echo "docs_changed=true" >> $GITHUB_OUTPUT
           fi
+
+  blog:
+    needs: scrape
+    if: needs.scrape.outputs.docs_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # full history needed for git diff against parent commit
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - name: Generate post
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: bun run blog-writer.ts
+      - name: Build site
+        run: bun run blog/build.ts
+      - name: Commit post
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add blog/posts/
+          git diff --cached --quiet || (git commit -m "blog: digest $(date -u +%Y-%m-%d)" && git push)
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: blog/dist/
+      - uses: actions/deploy-pages@v4
+        id: deployment

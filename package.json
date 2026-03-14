@@ -3,6 +3,12 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "scrape": "bun run index.ts",
+    "blog:write": "bun run blog-writer.ts",
+    "blog:build": "bun run blog/build.ts",
+    "blog": "bun run blog:write && bun run blog:build"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
@@ -10,6 +16,8 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "eta": "^4.5.1",
     "node-html-parser": "^7.1.0"
   }
 }

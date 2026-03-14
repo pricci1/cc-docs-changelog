@@ -1,30 +1,39 @@
 # Claude Code Docs Tracker
 
-Scrapes **all** [Claude Code](https://code.claude.com) documentation pages (~56 pages across 7 categories) and tracks content changes over time using git history.
+Scrapes all [Claude Code](https://code.claude.com) documentation pages (~56 pages) daily and tracks changes via git history. When docs change, an AI-written digest post is published to GitHub Pages.
 
 ## How it works
 
-1. Fetches `div.nav-tabs` from any docs page to discover all category entry slugs
-2. Fetches each category's sidebar (`#navigation-items`) to discover all page slugs
-3. Downloads each page as clean markdown via the `.md` URL variant (e.g. `/docs/en/cli-reference.md`)
-4. Strips boilerplate headers and writes files to `docs/`
-5. A GitHub Actions workflow runs daily at 06:00 UTC and commits any changes — git history is the changelog
+1. Fetches the docs nav to discover all page slugs
+2. Downloads each page as clean markdown into `docs/`
+3. A GitHub Actions workflow runs daily at 06:00 UTC, commits any changes, then calls Claude to write a digest post summarising what changed and why it matters
+4. The blog is built as a static site and deployed to GitHub Pages
 
 ## Usage
 
 ```bash
 bun install
-bun run index.ts   # fetches and writes docs/
-bun test           # runs unit tests
+bun run scrape       # fetch and write docs/
+bun run blog:write   # generate AI digest post from latest commit
+bun run blog:build   # build static site → blog/dist/
+bun run blog         # write + build
+bun test
 ```
 
 ## Structure
 
 ```
-docs/
-  overview.md
-  quickstart.md
-  cli-reference.md
-  hooks.md
-  ...                # ~56 files, one per documentation page
+docs/                   # ~56 markdown files, one per docs page
+blog/
+  posts/                # generated digest posts (committed)
+  dist/                 # built HTML (gitignored, deployed via Pages)
+  templates/            # Eta v4 HTML templates
+blog-writer.ts          # reads git diff, calls Claude, writes post
+blog/build.ts           # static site generator
+index.ts                # doc scraper
 ```
+
+## Setup
+
+- Add `ANTHROPIC_API_KEY` secret: repo Settings → Secrets → Actions
+- Enable GitHub Pages: Settings → Pages → Source = "GitHub Actions"

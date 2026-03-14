@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code Docs Changelog Digest</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem 1rem; color: #1a1a1a; line-height: 1.6; }
+    h1 { font-size: 1.8rem; }
+    p.subtitle { color: #555; margin-top: -0.5rem; }
+    ul { list-style: none; padding: 0; }
+    li { padding: 0.75rem 0; border-bottom: 1px solid #f0f0f0; }
+    li:last-child { border-bottom: none; }
+    a { color: #0066cc; text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; }
+    .date { color: #888; font-size: 0.9rem; margin-left: 0.5rem; }
+    .empty { color: #888; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h1>Claude Code Docs Changelog Digest</h1>
+  <p class="subtitle">AI-powered analysis of Claude Code documentation changes, for developers.</p>
+  <% if (it.posts && it.posts.length > 0) { %>
+  <ul>
+    <% it.posts.forEach(function(post) { %>
+    <li>
+      <a href="posts/<%= post.slug %>.html"><%= post.title %></a>
+      <span class="date"><%= post.date %></span>
+    </li>
+    <% }) %>
+  </ul>
+  <% } else { %>
+  <p class="empty">First digest coming soon.</p>
+  <% } %>
+</body>
+</html>

@@ -6,6 +6,9 @@ out
 dist
 *.tgz
 
+# blog built output (deployed via GitHub Pages artifact)
+blog/dist/
+
 # code coverage
 coverage
 *.lcov
