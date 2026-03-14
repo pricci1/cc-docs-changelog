@@ -46,19 +46,27 @@ function extractAddedLines(diff: string, maxLines = 200): string {
     .join("\n")
 }
 
-// Parse --stat output to find top N non-changelog files by insertion count
-function topChangedFiles(stat: string, n = 5): string[] {
+// Parse --stat output to get all non-changelog changed doc files
+function getAllChangedFiles(stat: string): string[] {
   return stat
     .split("\n")
     .filter(l => l.includes("|") && l.includes("docs/") && !l.includes("changelog.md"))
-    .map(l => {
-      const [path, rest] = l.split("|")
-      const insertions = parseInt((rest ?? "").match(/(\d+)/)?.[1] ?? "0", 10)
-      return { path: path.trim().replace(/^docs\//, ""), insertions }
-    })
-    .sort((a, b) => b.insertions - a.insertions)
-    .slice(0, n)
-    .map(f => f.path)
+    .map(l => l.split("|")[0].trim().replace(/^docs\//, ""))
+}
+
+const SUBAGENT_SYSTEM = `You analyze a single Claude Code documentation file diff.
+Extract key insights: what was added or changed, what it means for users.
+Be concise — 2-4 bullet points or sentences. No preamble.`
+
+// Uses flash-lite for cheap parallel extraction; pro model handles synthesis
+async function analyzeFileDiff(file: string, diff: string): Promise<string> {
+  const { text } = await generateText({
+    model: openrouter("google/gemini-3.1-flash-lite-preview"),
+    system: SUBAGENT_SYSTEM,
+    messages: [{ role: "user", content: `File: docs/${file}\n\n${diff}` }],
+    maxOutputTokens: 512,
+  })
+  return `### docs/${file}\n${text.trim()}`
 }
 
 async function main() {
@@ -84,16 +92,16 @@ async function main() {
     process.exit(0)
   }
 
-  // Gather context from top changed non-changelog files
-  const changedFiles = topChangedFiles(stat)
-  const fileContextSections: string[] = []
-  for (const file of changedFiles) {
-    const fileDiff = await Bun.$`git show HEAD --unified=0 -- docs/${file}`.text()
-    const added = extractAddedLines(fileDiff, 200)
-    if (added.trim()) {
-      fileContextSections.push(`### docs/${file}\n${added}`)
-    }
-  }
+  // Dispatch all changed files to subagents in parallel for insight extraction
+  const changedFiles = getAllChangedFiles(stat)
+  const subagentInsights = await Promise.all(
+    changedFiles.map(async file => {
+      const fileDiff = await Bun.$`git show HEAD --unified=0 -- docs/${file}`.text()
+      const fullDiff = extractAddedLines(fileDiff, 300)
+      if (!fullDiff.trim()) return null
+      return analyzeFileDiff(file, fullDiff)
+    })
+  ).then(results => results.filter(Boolean) as string[])
 
   // Human-readable date for the post title
   const displayDate = timestamp.slice(0, 10)
@@ -102,8 +110,8 @@ async function main() {
     .map(b => `- **${b.version}** (${b.description}): ${b.content.replace(/\n/g, " ").slice(0, 300)}`)
     .join("\n")
 
-  const fileContext = fileContextSections.length > 0
-    ? `## Documentation changes (context)\n${fileContextSections.join("\n\n")}`
+  const fileContext = subagentInsights.length > 0
+    ? `## Subagent insights (per changed file)\n${subagentInsights.join("\n\n")}`
     : ""
 
   const userMessage = `Today is ${displayDate}. Write "Claude Code Digest — ${displayDate}".
