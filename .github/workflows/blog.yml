@@ -1,0 +1,27 @@
+name: Build Blog
+on:
+  workflow_dispatch:
+jobs:
+  blog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - name: Build site
+        run: bun run blog/build.ts
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: blog/dist/
+      - uses: actions/deploy-pages@v4
+        id: deployment
