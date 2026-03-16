@@ -30,6 +30,24 @@ jobs:
             echo "docs_changed=true" >> $GITHUB_OUTPUT
           fi
 
+  release:
+    needs: scrape
+    if: needs.scrape.outputs.docs_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: git pull  # fetch the commit pushed by the scrape job
+      - name: Create release
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          gh release create "docs-$(date -u +%Y-%m-%d)-${SHA}" \
+            --title "Docs update ${SHA}" \
+            --notes "Automated documentation update at commit ${SHA}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   blog:
     needs: scrape
     if: needs.scrape.outputs.docs_changed == 'true'
