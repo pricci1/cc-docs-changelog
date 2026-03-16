@@ -7,6 +7,7 @@ interface PostMeta {
   title: string
   date: string
   versions: string[]
+  commitUrl?: string
 }
 
 // Parse YAML-ish frontmatter block between the first two "---" lines
@@ -57,12 +58,15 @@ async function main() {
     const title = meta.title || slug
     const date = meta.date || slug.slice(0, 10)
     const versions = parseVersions(meta.versions)
+    const commitUrl = meta.sha
+      ? `https://github.com/pricci1/cc-docs-changelog/commit/${meta.sha}`
+      : undefined
 
     const htmlBody = Bun.markdown.html(body)
-    const html = eta.render("./post", { title, htmlBody, versions, date })
+    const html = eta.render("./post", { title, htmlBody, versions, date, commitUrl })
 
     await Bun.write(`${distPostsDir}/${slug}.html`, html)
-    allPosts.push({ slug, title, date, versions })
+    allPosts.push({ slug, title, date, versions, commitUrl })
   }
 
   const indexHtml = eta.render("./index", { posts: allPosts })

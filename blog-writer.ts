@@ -96,12 +96,7 @@ async function main() {
   const stat = await Bun.$`git diff --stat ${commit}^ ${commit} -- docs/`.text()
   const changelogDiff = await Bun.$`git show ${commit} -- docs/changelog.md`.text()
 
-  // Parse new version blocks — bail if nothing meaningful changed in the changelog
   const updateBlocks = parseNewUpdateBlocks(changelogDiff)
-  if (updateBlocks.length === 0) {
-    console.log("No new Update blocks in changelog diff, skipping blog post.")
-    process.exit(0)
-  }
 
   // Dispatch all changed files to subagents in parallel for insight extraction
   const changedFiles = getAllChangedFiles(stat)
@@ -114,52 +109,58 @@ async function main() {
     })
   ).then(results => results.filter(Boolean) as string[])
 
-  // Human-readable date for the post title
-  const displayDate = timestamp.slice(0, 10)
+  const sha = (await Bun.$`git rev-parse ${commit}`.text()).trim()
+  const commitUrl = `https://github.com/pricci1/cc-docs-changelog/commit/${sha}`
 
-  const versionsList = updateBlocks
-    .map(b => `- **${b.version}** (${b.description}): ${b.content.replace(/\n/g, " ").slice(0, 300)}`)
-    .join("\n")
+  // Human-readable datetime for the post title
+  const displayDate = timestamp.slice(0, 10)
+  const displayTime = timestamp.slice(11).replace(/(\d{2})(\d{2})(\d{2})/, "$1:$2:$3")
+  const displayDatetime = `${displayDate} ${displayTime}`
+
+  const versionsSection = updateBlocks.length > 0
+    ? `## New version releases\n${updateBlocks.map(b => `- **${b.version}** (${b.description}): ${b.content.replace(/\n/g, " ").slice(0, 300)}`).join("\n")}`
+    : ""
 
   const fileContext = subagentInsights.length > 0
     ? `## Subagent insights (per changed file)\n${subagentInsights.join("\n\n")}`
     : ""
 
-  const userMessage = `Today is ${displayDate}. Write "Claude Code Digest — ${displayDate}".
+  const userMessage = `Today is ${displayDatetime}. Write "Claude Code Digest — ${displayDatetime}".
 
-## New version releases
-${versionsList}
+${versionsSection}
 
 ${fileContext}
 
 Structure the post as:
-# Claude Code Digest — ${displayDate}
-## Version updates
+# Claude Code Digest — ${displayDatetime}
+${updateBlocks.length > 0 ? "## Version updates" : ""}
 ## What the docs reveal
 
+If there are no version updates, omit the "Version updates" section entirely.
 Output only the markdown post, no preamble or explanation.`
 
-  const { text: post } = await generateText({
+  const { text: rawPost } = await generateText({
     model: openrouter("google/gemini-3.1-pro-preview"),
     maxOutputTokens: 8192,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],
   })
-  if (!post?.trim()) {
+  if (!rawPost?.trim()) {
     console.error("Claude returned empty response")
     process.exit(1)
   }
 
   const versions = updateBlocks.map(b => b.version)
   const frontmatter = `---
-title: "Claude Code Digest — ${displayDate}"
+title: "Claude Code Digest — ${displayDatetime}"
 date: "${displayDate}"
 versions: [${versions.join(", ")}]
+sha: ${sha}
 ---
 
 `
 
-  await Bun.write(outputPath, frontmatter + post)
+  await Bun.write(outputPath, frontmatter + rawPost)
   console.log(`Written: ${outputPath}`)
 }
 
