@@ -77,20 +77,15 @@ async function analyzeFileDiff(file: string, diff: string): Promise<string> {
 }
 
 async function main() {
-  const commit = process.argv[2] ?? "HEAD"
+  const commit = process.argv[2]
+  if (!commit) {
+    console.error("Usage: bun run blog-writer.ts <commit-sha>")
+    process.exit(1)
+  }
 
   // Derive output filename from commit timestamp — serves as idempotency key
   const timestamp = (await Bun.$`git log -1 --format="%cd" --date=format:"%Y-%m-%d-%H%M%S" ${commit}`.text()).trim()
   const outputPath = `blog/posts/${timestamp}.md`
-
-  // Idempotency: skip if post already exists for this commit (bypass when testing a specific commit)
-  if (commit === "HEAD") {
-    const existing = Array.from(new Bun.Glob(outputPath).scanSync("."))
-    if (existing.length > 0) {
-      console.log(`Post already exists: ${outputPath}, skipping.`)
-      process.exit(0)
-    }
-  }
 
   // Gather diffs
   const stat = await Bun.$`git diff --stat ${commit}^ ${commit} -- docs/`.text()
