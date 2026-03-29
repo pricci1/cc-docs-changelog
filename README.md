@@ -37,3 +37,5 @@ index.ts                # doc scraper
 
 - Add `OPENROUTER_API_KEY` secret: repo Settings → Secrets → Actions
 - Enable GitHub Pages: Settings → Pages → Source = "GitHub Actions"
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/pricci1/cc-docs-changelog)
