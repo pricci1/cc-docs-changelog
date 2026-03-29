@@ -71,6 +71,8 @@ jobs:
       - name: Generate post
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SUBAGENT_MODEL: ${{ vars.SUBAGENT_MODEL }}
+          SYNTHESIS_MODEL: ${{ vars.SYNTHESIS_MODEL }}
         run: bun run blog-writer.ts ${{ needs.scrape.outputs.commit_sha }}
       - name: Build site
         run: bun run blog/build.ts
