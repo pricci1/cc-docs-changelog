@@ -1,6 +1,15 @@
 name: Build Blog
 on:
   workflow_dispatch:
+    inputs:
+      subagent_model:
+        description: "OpenRouter model ID for per-file diff analysis"
+        required: false
+        default: "google/gemini-3.1-flash-lite-preview"
+      synthesis_model:
+        description: "OpenRouter model ID for final post synthesis"
+        required: false
+        default: "google/gemini-3.1-pro-preview"
 jobs:
   blog:
     runs-on: ubuntu-latest
@@ -19,6 +28,9 @@ jobs:
       - run: bun install
       - name: Build site
         run: bun run blog/build.ts
+        env:
+          SUBAGENT_MODEL: ${{ inputs.subagent_model }}
+          SYNTHESIS_MODEL: ${{ inputs.synthesis_model }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -66,10 +66,13 @@ Ignore the following — they carry no signal for users:
 
 If a diff contains only the above, output nothing. Remember, no preamble.`
 
+const SUBAGENT_MODEL = process.env.SUBAGENT_MODEL ?? "google/gemini-3.1-flash-lite-preview"
+const SYNTHESIS_MODEL = process.env.SYNTHESIS_MODEL ?? "google/gemini-3.1-pro-preview"
+
 // Uses flash-lite for cheap parallel extraction; pro model handles synthesis
 async function analyzeFileDiff(file: string, diff: string): Promise<string> {
   const { text } = await generateText({
-    model: openrouter("google/gemini-3.1-flash-lite-preview"),
+    model: openrouter(SUBAGENT_MODEL),
     system: SUBAGENT_SYSTEM,
     messages: [{ role: "user", content: `File: docs/${file}\n\n${diff}` }],
     maxOutputTokens: 512,
@@ -136,7 +139,7 @@ If there are no version updates, omit the "Version updates" section entirely.
 Output only the markdown post, no preamble or explanation.`
 
   const { text: rawPost } = await generateText({
-    model: openrouter("google/gemini-3.1-pro-preview"),
+    model: openrouter(SYNTHESIS_MODEL),
     maxOutputTokens: 8192,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],
