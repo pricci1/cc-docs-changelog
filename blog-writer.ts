@@ -66,8 +66,8 @@ Ignore the following — they carry no signal for users:
 
 If a diff contains only the above, output nothing. Remember, no preamble.`
 
-const SUBAGENT_MODEL = process.env.SUBAGENT_MODEL ?? "google/gemini-3.1-flash-lite-preview"
-const SYNTHESIS_MODEL = process.env.SYNTHESIS_MODEL ?? "google/gemini-3.1-pro-preview"
+const SUBAGENT_MODEL = process.env.SUBAGENT_MODEL || "google/gemini-3.1-flash-lite-preview"
+const SYNTHESIS_MODEL = process.env.SYNTHESIS_MODEL || "google/gemini-3.1-pro-preview"
 
 // Uses flash-lite for cheap parallel extraction; pro model handles synthesis
 async function analyzeFileDiff(file: string, diff: string): Promise<string> {
