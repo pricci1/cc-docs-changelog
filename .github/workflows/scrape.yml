@@ -1,7 +1,7 @@
 name: Scrape Reference Docs
 on:
   schedule:
-    - cron: "0 */4 * * *"   # every 4 hours
+    - cron: "0 */24 * * *" # every 24 hours
   workflow_dispatch:
 permissions:
   contents: write
@@ -40,7 +40,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - run: git pull  # fetch the commit pushed by the scrape job
+      - run: git pull # fetch the commit pushed by the scrape job
       - name: Create release
         run: |
           SHA=$(git rev-parse --short HEAD)
@@ -64,8 +64,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0        # full history needed for git diff against parent commit
-      - run: git pull  # fetch the commit pushed by the scrape job
+          fetch-depth: 0 # full history needed for git diff against parent commit
+      - run: git pull # fetch the commit pushed by the scrape job
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - name: Generate post
