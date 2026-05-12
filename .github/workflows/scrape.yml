@@ -1,7 +1,7 @@
 name: Scrape Reference Docs
 on:
   schedule:
-    - cron: "0 */24 * * *" # every 24 hours
+    - cron: "0 */72 * * *" # every 72 hours
   workflow_dispatch:
 permissions:
   contents: write
