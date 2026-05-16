@@ -89,17 +89,18 @@ sequenceDiagram
 
 <CodeGroup>
   ```typescript TypeScript theme={null}
-  import { query } from "@anthropic-ai/claude-agent-sdk";
+  import { query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
   import { readFile } from "fs/promises";
 
-  async function* generateMessages() {
+  async function* generateMessages(): AsyncGenerator<SDKUserMessage> {
     // First message
     yield {
-      type: "user" as const,
+      type: "user",
       message: {
-        role: "user" as const,
+        role: "user",
         content: "Analyze this codebase for security issues"
-      }
+      },
+      parent_tool_use_id: null
     };
 
     // Wait for conditions or user input
@@ -107,9 +108,9 @@ sequenceDiagram
 
     // Follow-up with image
     yield {
-      type: "user" as const,
+      type: "user",
       message: {
-        role: "user" as const,
+        role: "user",
         content: [
           {
             type: "text",
@@ -124,7 +125,8 @@ sequenceDiagram
             }
           }
         ]
-      }
+      },
+      parent_tool_use_id: null
     };
   }
 
@@ -136,7 +138,7 @@ sequenceDiagram
       allowedTools: ["Read", "Grep"]
     }
   })) {
-    if (message.type === "result") {
+    if (message.type === "result" && message.subtype === "success") {
       console.log(message.result);
     }
   }
@@ -246,7 +248,7 @@ Use single message input when:
       allowedTools: ["Read", "Grep"]
     }
   })) {
-    if (message.type === "result") {
+    if (message.type === "result" && message.subtype === "success") {
       console.log(message.result);
     }
   }
@@ -259,7 +261,7 @@ Use single message input when:
       maxTurns: 1
     }
   })) {
-    if (message.type === "result") {
+    if (message.type === "result" && message.subtype === "success") {
       console.log(message.result);
     }
   }
