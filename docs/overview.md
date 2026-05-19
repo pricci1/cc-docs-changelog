@@ -1,6 +1,6 @@
 [View original](https://code.claude.com/docs/en/overview)
 
-# Claude Code overview
+# Overview
 
 > Claude Code is an agentic coding tool that reads your codebase, edits files, runs commands, and integrates with your development tools. Available in your terminal, IDE, desktop app, and browser.
 
