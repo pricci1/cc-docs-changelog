@@ -27,19 +27,19 @@ To install Claude Code, use one of the following methods:
   <Tab title="Native Install (Recommended)">
     **macOS, Linux, WSL:**
 
-    ```bash theme={null}
+    ```bash theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null}
     curl -fsSL https://claude.ai/install.sh | bash
     ```
 
     **Windows PowerShell:**
 
-    ```powershell theme={null}
+    ```powershell theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null}
     irm https://claude.ai/install.ps1 | iex
     ```
 
     **Windows CMD:**
 
-    ```batch theme={null}
+    ```batch theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null}
     curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd
     ```
 
@@ -53,7 +53,7 @@ To install Claude Code, use one of the following methods:
   </Tab>
 
   <Tab title="Homebrew">
-    ```bash theme={null}
+    ```bash theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null}
     brew install --cask claude-code
     ```
 
@@ -65,7 +65,7 @@ To install Claude Code, use one of the following methods:
   </Tab>
 
   <Tab title="WinGet">
-    ```powershell theme={null}
+    ```powershell theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null} theme={null}
     winget install Anthropic.ClaudeCode
     ```
 
@@ -256,7 +256,9 @@ review my changes and suggest improvements
 
 ## Essential commands
 
-Here are the most important commands for daily use:
+Here are the most important commands for daily use. Shell commands run from your terminal to start or resume Claude Code. Session commands run inside Claude Code after it starts.
+
+**Shell commands**
 
 | Command             | What it does                                           | Example                             |
 | ------------------- | ------------------------------------------------------ | ----------------------------------- |
@@ -265,11 +267,16 @@ Here are the most important commands for daily use:
 | `claude -p "query"` | Run one-off query, then exit                           | `claude -p "explain this function"` |
 | `claude -c`         | Continue most recent conversation in current directory | `claude -c`                         |
 | `claude -r`         | Resume a previous conversation                         | `claude -r`                         |
-| `/clear`            | Clear conversation history                             | `/clear`                            |
-| `/help`             | Show available commands                                | `/help`                             |
-| `exit` or Ctrl+D    | Exit Claude Code                                       | `exit`                              |
 
-See the [CLI reference](/en/cli-reference) for a complete list of commands.
+**Session commands**
+
+| Command           | What it does               | Example  |
+| ----------------- | -------------------------- | -------- |
+| `/clear`          | Clear conversation history | `/clear` |
+| `/help`           | Show available commands    | `/help`  |
+| `/exit` or Ctrl+D | Exit Claude Code           | `/exit`  |
+
+See the [CLI reference](/en/cli-reference) for the complete list of shell commands and the [commands reference](/en/commands) for the complete list of session commands.
 
 ## Pro tips for beginners
 
