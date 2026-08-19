@@ -29,8 +29,8 @@
 | `Ctrl+S`                                                                                     | Stash or restore prompt                                                                                                                                    | With text in the input, stashes it and clears the prompt. Pressed again on an empty prompt, restores the stashed text, cursor position, and pasted content                                                                                                                                                                                                                                                                               |
 | `Ctrl+Z`                                                                                     | Suspend Claude Code                                                                                                                                        | Unix only. Suspends the process to your shell; run `fg` to resume                                                                                                                                                                                                                                                                                                                                                                        |
 | `Left/Right arrows`                                                                          | Cycle through dialog tabs                                                                                                                                  | Navigate between tabs in permission dialogs and menus                                                                                                                                                                                                                                                                                                                                                                                    |
-| `Up/Down arrows` or `Ctrl+P`/`Ctrl+N`                                                        | Move cursor or navigate command history                                                                                                                    | When the input spans more than one visual row, whether wrapped or multiline, first moves the cursor within the prompt. Once the cursor is on the first or last visual row, pressing again navigates command history                                                                                                                                                                                                                      |
-| `Esc`                                                                                        | Interrupt Claude, or close a dialog                                                                                                                        | Stop the current response or tool call mid-turn so you can redirect. Claude keeps the work done so far. When a dialog such as a permission prompt is open, `Esc` closes the dialog rather than interrupting Claude                                                                                                                                                                                                                       |
+| `Up/Down arrows` or `Ctrl+P`/`Ctrl+N`                                                        | Move cursor or navigate command history                                                                                                                    | When the input spans more than one visual row, whether wrapped or multiline, first moves the cursor within the prompt. Once the cursor is on the first or last visual row, pressing again navigates command history. While you have messages queued, `Up` from the first row instead [takes them back](#take-back-what-you-queued)                                                                                                       |
+| `Esc`                                                                                        | Interrupt Claude, or close a dialog                                                                                                                        | Stop the current response or tool call mid-turn so you can redirect. Claude keeps the work done so far. If you have [messages queued](#queue-messages-while-claude-works), Claude Code sends them next. When a dialog such as a permission prompt is open, `Esc` closes the dialog rather than interrupting Claude                                                                                                                       |
 | `Esc` + `Esc`                                                                                | Clear input draft, or rewind                                                                                                                               | When the prompt input contains text, double `Esc` clears it and saves the draft to history so `Up` recalls it. When the input is empty, double `Esc` opens the [rewind menu](/docs/en/checkpointing) to restore or summarize code and conversation from a previous point                                                                                                                                                                      |
 | `Shift+Tab`, or `Alt+M` on Windows when the Node or Bun runtime doesn't enable VT input mode | Cycle permission modes                                                                                                                                     | Cycle through `default` (labeled Manual in the mode indicator), `acceptEdits`, `plan`, and, when available, `bypassPermissions` and then `auto`. From `auto`, the first press switches to `default`. See [permission modes](/docs/en/permission-modes).                                                                                                                                                                                       |
 | `Option+P` (macOS) or `Alt+P` (Windows/Linux)                                                | Switch model                                                                                                                                               | Switch models without clearing your prompt                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -308,6 +308,25 @@ Shell mode:
 
 Claude responds to the command output automatically once it lands in the transcript, so you can run `! npm test` and get an explanation of the failures without a second prompt. The response costs the same as sending a normal prompt. To restore the earlier behavior where the output is added to context without a response, set [`respondToBashCommands`](/docs/en/settings#available-settings) to `false` in `settings.json`. Before v2.1.186, shell mode always added output to context without a response.
 
+## Queue messages while Claude works
+
+Type a message and press `Enter` while Claude is working. Claude Code queues the message instead of interrupting the turn, and lists the queued entries above the input box until it sends them. You can queue `!` [shell commands](#shell-mode-with-prefix) and most [commands](/docs/en/commands) the same way, apart from the commands, such as `/status`, that Claude Code runs as soon as you send them.
+
+### When Claude Code sends what you queued
+
+When a queued entry reaches Claude depends on what you queued.
+
+* Messages: if you queue a message while Claude is running tool calls, Claude Code passes it to Claude as soon as those tool calls finish, within the same turn. When the turn ends, Claude Code sends the messages that are still queued as the next turn, each as a separate message
+* Commands and shell commands: Claude Code holds them until the turn ends, then runs them one at a time
+
+Press `Esc` to interrupt the turn instead. Claude Code keeps what you queued and sends it right away.
+
+### Take back what you queued
+
+Press `Up` from the first line of the input box to take back the queued messages and commands. Claude Code removes them from the queue and puts them in the input box, one per line, ahead of any text you had typed. Edit the text and press `Enter` to queue it again as one entry, or clear the input box to drop it.
+
+Claude Code takes back queued shell commands only when the input box is empty and you have nothing else queued, and it switches the input box to shell mode when it does. Otherwise it leaves them in the queue, listed with their `!` prefix, and runs them after the turn ends.
+
 ## Prompt suggestions
 
 When you first open a session, Claude Code shows a grayed-out example command in the prompt input to help you get started. It picks this from your project's git history, so the example reflects files you've been working on recently.
@@ -362,6 +381,103 @@ Type a `:` followed by an emoji shortcode in the prompt input to insert the emoj
 The shortcode must start the input or follow a space, so a `:` inside a word or URL doesn't open suggestions.
 
 To turn the feature off, set [`emojiCompletionEnabled`](/docs/en/settings#available-settings) to `false` in `settings.json`. This disables both the suggestion popup and the inline replacement.
+
+## Check spelling as you type
+
+Claude Code can underline misspelled words in the prompt input while you type. It checks only the text in the input box, never Claude's replies or your files. It also checks nothing while the input box is in [shell mode](#shell-mode-with-prefix), `Ctrl+R` history search, or [voice dictation](/docs/en/voice-dictation).
+
+Spell checking is off by default, and Claude Code checks nothing in [screen reader mode](/docs/en/accessibility). Requires Claude Code v2.1.235 or later.
+
+### Prerequisites
+
+* Install [aspell](https://github.com/GNUAspell/aspell), [hunspell](https://github.com/hunspell/hunspell), or [ispell](https://en.wikipedia.org/wiki/Ispell) and make sure it's on your `PATH`. Claude Code runs the first of the three it finds, in that order, on every platform, including a `.cmd` shim a package manager installs on Windows.
+* To check that the program is on your `PATH`, run `aspell --version`, `hunspell --version`, or `ispell -v` in your terminal. A "command not found" error means it isn't on your `PATH` yet.
+
+### Turn spell checking on or off
+
+Claude Code reads the [`spellcheck`](/docs/en/settings#available-settings) setting from three places, and ignores it in a project's `.claude/settings.json` and `.claude/settings.local.json`. Turn it on from whichever one you use:
+
+<Tabs>
+  <Tab title="User settings">
+    Add `spellcheck` to `~/.claude/settings.json`. It applies in every project you open, like the rest of your [user settings](/docs/en/settings#settings-files):
+
+    ```json theme={null}
+    {
+      "spellcheck": { "enabled": true }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Command line">
+    Save `spellcheck` in a JSON file, such as `spellcheck.json`:
+
+    ```json theme={null}
+    {
+      "spellcheck": { "enabled": true }
+    }
+    ```
+
+    Then pass the file to `--settings`. It applies to that session only:
+
+    ```bash theme={null}
+    claude --settings spellcheck.json
+    ```
+  </Tab>
+
+  <Tab title="Managed settings">
+    Add `spellcheck` to one of your organization's [managed settings sources](/docs/en/permissions#managed-settings). It applies to every user who receives those settings, and they can't turn it off:
+
+    ```json theme={null}
+    {
+      "spellcheck": { "enabled": true }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+To check that spell checking is on, type a misspelled word and a space. Claude Code underlines the word. If it doesn't, see [When Claude Code underlines nothing](#when-claude-code-underlines-nothing). To turn spell checking off again, set `enabled` to `false` in the same place, or remove `spellcheck`.
+
+To choose which of the three programs Claude Code runs, which dictionary it uses, or the underline color, add any of these fields next to `enabled`, in the same place:
+
+* `checker`: `aspell`, `hunspell`, or `ispell`. Claude Code doesn't fall back from a checker you name, and treats any other value as `auto`.
+* `language`: a dictionary name in your checker's form, such as `en_GB`. Claude Code ignores any value that isn't a plain dictionary name, such as a path or a name with spaces, and the checker uses its default dictionary.
+* `color`: a color name such as `yellow`, or a `#rrggbb`, `#rgb`, `rgb(r,g,b)`, `ansi256(n)`, or `ansi:<name>` value. Claude Code uses your theme's error color by default and for any value it doesn't recognize.
+
+For example, this `spellcheck` setting runs hunspell with its `en_GB` dictionary and underlines words in yellow. It works the same in `~/.claude/settings.json`, in the file you pass to `--settings`, and in managed settings:
+
+```json theme={null}
+{
+  "spellcheck": {
+    "enabled": true,
+    "checker": "hunspell",
+    "language": "en_GB",
+    "color": "yellow"
+  }
+}
+```
+
+If more than one of the three places has a `spellcheck` setting, Claude Code uses only one of them: managed settings first, then `--settings`, then user settings. It doesn't combine fields from two places. For example, when `--settings` sets `spellcheck`, a `language` in your user settings has no effect.
+
+### What Claude Code underlines
+
+Shortly after you pause typing, Claude Code underlines the words the dictionary doesn't know. It leaves the word you're still typing alone until you move past it, and it never changes your text. It also skips text that looks like code:
+
+* Commands such as `/help`, `@` mentions, URLs, file paths, and flags such as `--verbose`
+* Words with digits, underscores, or a capital letter after the first, and text in backticks
+
+Claude Code also skips Chinese, Japanese, Korean, Thai, Lao, Khmer, and Myanmar text.
+
+Claude Code has no word list of its own: a word is misspelled when your checker says so. To stop Claude Code from underlining a word, add the word to your checker's personal dictionary, following the checker's own documentation. Claude Code picks up the new word after you restart it.
+
+### When Claude Code underlines nothing
+
+Claude Code underlines nothing when it can't keep a checker running:
+
+* No checker is installed, or the one you named in `checker` is missing
+* The checker fails twice in a row, at startup or later in the session. Claude Code restarts it after the first failure and stops checking after the second, until you restart Claude Code
+* The checker takes more than 15 seconds to answer, three times. Each time, Claude Code leaves the words it was waiting on unmarked; after the third, it stops checking until you restart Claude Code
+
+To find out which of these happened, start `claude --debug` with spell checking on and type a word. Then look for the `[spellcheck]` lines in the debug log at `~/.claude/debug/<session-id>.txt`. One line names the program Claude Code started, or lists the ones it looked for and didn't find. Later lines say why it stopped. A missing-dictionary error there means the checker has no dictionary for your `language` value, or no default one when `language` is unset. Install one, or set `language` to a dictionary you have.
 
 ## Side questions with /btw
 

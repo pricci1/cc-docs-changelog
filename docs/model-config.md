@@ -163,7 +163,7 @@ When `availableModels` is set, the allowlist applies everywhere a user can speci
 * **Main session model**: `/model`, the `--model` flag, the `ANTHROPIC_MODEL` environment variable, the `model` setting, and the model restored when [resuming a session](#setting-your-model)
 * **Alias resolution**: the `ANTHROPIC_DEFAULT_OPUS_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`, `ANTHROPIC_DEFAULT_HAIKU_MODEL`, and `ANTHROPIC_DEFAULT_FABLE_MODEL` environment variables cannot redirect an allowed alias to a model outside the list
 * **Fast mode**: `/fast` refuses to toggle when it would implicitly switch to an Opus model outside the list, with the message "is not in your organization's allowed models"
-* **Subagent and teammate models**: the `model` field in [subagent](/docs/en/sub-agents#choose-a-model) frontmatter, the Agent tool's `model` parameter, [agent team](/docs/en/agent-teams#specify-teammates-and-models) teammate models including the `teammateDefaultModel` setting, `CLAUDE_CODE_SUBAGENT_MODEL`, and, on v2.1.197 and earlier, the model picker in the `/agents` wizard&#x20;
+* **Subagent and teammate models**: the `model` field in [subagent](/docs/en/sub-agents#choose-a-model) frontmatter, the Agent tool's `model` parameter, [agent team](/docs/en/agent-teams#specify-teammates-and-models) teammate models, `CLAUDE_CODE_SUBAGENT_MODEL`, and, on v2.1.197 and earlier, the model picker in the `/agents` wizard&#x20;
 * **Skill and command models**: the `model` frontmatter in [skills and commands](/docs/en/skills)
 * **Advisor model**: the configured [`advisorModel`](/docs/en/advisor) setting and the `--advisor` flag
 * **Background agent model**: the model selected in the [dispatch picker](/docs/en/agent-view)
@@ -176,10 +176,10 @@ Claude Code handles any other blocked selection according to where the model was
 
 * **`/model`**: Claude Code rejects the switch with an error
 * **`--model` flag, `ANTHROPIC_MODEL`, or the `model` setting**: Claude Code replaces the value at startup with a warning naming both the requested and substituted models, and the session starts on the default model
-* **Subagent or teammate override**: Claude Code falls back to the [subagent's inherited model](/docs/en/sub-agents#choose-a-model) or the [default teammate model](/docs/en/agent-teams#specify-teammates-and-models) rather than failing the request. In interactive sessions, Claude Code warns you when it substitutes a subagent's model, by this fallback or by the newest-permitted-version substitution above, naming the requested and substituted models; it doesn't report a teammate's fallback. When the blocked value is the **Default teammate model** setting itself, Claude Code runs the teammate on your provider's default Opus model, or on the lead's model when the allowlist blocks that too. Where the newest-permitted-version substitution above operates, a blocked family alias follows it instead; before v2.1.222, an alias fell back like any other blocked value on every provider
+* **Subagent or teammate override**: Claude Code falls back to the [subagent's inherited model](/docs/en/sub-agents#choose-a-model) or the [lead's model for a teammate](/docs/en/agent-teams#specify-teammates-and-models) rather than failing the request. In interactive sessions, Claude Code warns you when it substitutes a subagent's model, by this fallback or by the newest-permitted-version substitution above, naming the requested and substituted models; it doesn't report a teammate's fallback. Where the newest-permitted-version substitution above operates, a blocked family alias follows it instead; before v2.1.222, an alias fell back like any other blocked value on every provider
 * **Skill or command override**: Claude Code ignores the override, including a blocked family alias, and the skill or command runs on the session model. A skill or command that [runs in a subagent](/docs/en/skills#run-skills-in-a-subagent) follows the subagent behavior above instead
 * **`advisorModel` setting**: the advisor is disabled for the session
-* **`--advisor` flag**: Claude Code exits with an error at launch
+* **`--advisor` flag**: Claude Code exits with an error at launch. In a [background session](/docs/en/agent-view), it starts the session without the advisor instead of exiting
 
 Claude Code hides excluded models from the `/model` picker. A full model ID in the list that has no built-in picker row, such as an older version that the list pins, appears in the `/model` picker as its own labeled row. Before v2.1.199, such an ID was selectable only by typing `/model <id>`.
 
@@ -559,7 +559,7 @@ Claude Code checks these plan requirements only when it connects to the Anthropi
 To turn off 1M context, set `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`. Claude Code removes 1M model variants from the model picker. On models with a native 1M window, such as Sonnet 5 and Fable 5, it also treats the model as having a 200K context window:
 
 * With auto-compaction on, sessions compact at the 200K boundary through [auto-compaction](#set-the-auto-compact-window). Setting the auto-compact window above 200K doesn't lift the hold, because Claude Code caps that window at the model's context window.
-* With auto-compaction off, sessions stop at the 200K boundary with a [`Prompt is too long` error](/docs/en/errors#prompt-is-too-long) instead of compacting.
+* With auto-compaction off, sessions stop at the 200K boundary with the [context-limit error](/docs/en/errors#prompt-is-too-long) instead of compacting.
 
 Before v2.1.223, Claude Code held only Sonnet 5, Opus 4.8, and Opus 5 sessions to 200K. See [environment variables](/docs/en/env-vars).
 

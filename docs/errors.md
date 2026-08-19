@@ -56,6 +56,7 @@ Match the message you see in your terminal to a section below.
 | `Claude.ai login expired`                                                                                                                                                                     | [Authentication](#remote-control-couldnt-refresh-your-login)                                                                  |
 | `Claude.ai login was rejected — run /login, then /remote-control`                                                                                                                             | [Authentication](#remote-control-couldnt-refresh-your-login)                                                                  |
 | `OAuth token unavailable — run /login to restore Remote Control`                                                                                                                              | [Authentication](#remote-control-couldnt-refresh-your-login)                                                                  |
+| `signed-in claude.ai account or organization changed on this machine`                                                                                                                         | [Authentication](#remote-control-stopped-because-the-signed-in-account-changed)                                               |
 | `OAuth token revoked` / `OAuth token has expired`                                                                                                                                             | [Authentication](#oauth-token-revoked-or-expired)                                                                             |
 | `API Error: 401 Invalid authentication credentials`                                                                                                                                           | [Authentication](#api-error-401-invalid-authentication-credentials)                                                           |
 | `Login expired · Please run /login`                                                                                                                                                           | [Authentication](#login-expired)                                                                                              |
@@ -79,9 +80,14 @@ Match the message you see in your terminal to a section below.
 | `403` with `x-deny-reason: host_not_allowed` in a cloud or routine session                                                                                                                    | [Network](#host-not-allowed-in-a-cloud-session)                                                                               |
 | `403` with `This GraphQL query is not enabled for this session` in a cloud session                                                                                                            | [GitHub proxy](/docs/en/cloud-environments#github-proxy)                                                                           |
 | `Couldn't reconnect to your Remote Control session`                                                                                                                                           | [Network](#couldnt-reconnect-to-your-remote-control-session)                                                                  |
+| `N sessions ended while this machine was offline — the environment was cleaned up on the server and can't be resumed.`                                                                        | [Network](#sessions-ended-while-this-machine-was-offline)                                                                     |
 | `Couldn't share the transcript.`                                                                                                                                                              | [Network](#couldnt-share-the-transcript)                                                                                      |
+| `Couldn't show context usage: the remote sent a reply this version can't display`                                                                                                             | [Network](#the-remote-sent-a-reply-this-version-cant-display)                                                                 |
+| `The remote session sent a reply this version can't display`                                                                                                                                  | [Network](#the-remote-sent-a-reply-this-version-cant-display)                                                                 |
 | `Prompt is too long` / `Input is too long for requested model`                                                                                                                                | [Request errors](#prompt-is-too-long)                                                                                         |
 | `Prompt is too long · automatic compaction failed:`                                                                                                                                           | [Request errors](#prompt-is-too-long)                                                                                         |
+| `Context limit reached · /compact or /clear to continue`                                                                                                                                      | [Request errors](#prompt-is-too-long)                                                                                         |
+| `Context limit reached · /clear to continue`                                                                                                                                                  | [Request errors](#prompt-is-too-long)                                                                                         |
 | `Context exceeds the ...-token limit by ... tokens` in `/context` output                                                                                                                      | [Request errors](#context-exceeds-the-token-limit)                                                                            |
 | `Error during compaction: Conversation too long`                                                                                                                                              | [Request errors](#error-during-compaction-conversation-too-long)                                                              |
 | `Request too large`                                                                                                                                                                           | [Request errors](#request-too-large)                                                                                          |
@@ -132,10 +138,12 @@ Match the message you see in your terminal to a section below.
 | `Plugin archive integrity check failed`                                                                                                                                                       | [Plugin errors](#plugin-archive-integrity-check-failed)                                                                       |
 | `would be spawned with zero tools — refusing`                                                                                                                                                 | [Tool errors](#agent-would-be-spawned-with-zero-tools)                                                                        |
 | `File is covered by a Read deny rule in your permission settings`                                                                                                                             | [Tool errors](#file-is-covered-by-a-read-deny-rule)                                                                           |
+| `subagent_type is required: the general-purpose agent is not available in this session`                                                                                                       | [Tool errors](#subagent-type-is-required)                                                                                     |
 | `Error: this write left the memory index at MEMORY.md at ..., over its ... read limit`                                                                                                        | [Tool errors](#memory-index-is-over-its-read-limit)                                                                           |
 | `pkill: refusing to run`                                                                                                                                                                      | [Tool errors](#pkill-pattern-matches-the-claude-code-process)                                                                 |
 | `Failed to write to <name>'s inbox — nothing was sent`                                                                                                                                        | [Tool errors](#failed-to-write-to-a-teammate-inbox)                                                                           |
 | `Failed to write the plan approval request to the lead's inbox — plan not submitted`                                                                                                          | [Tool errors](#failed-to-write-to-a-teammate-inbox)                                                                           |
+| `Message too large for cross-session delivery`                                                                                                                                                | [Tool errors](#message-too-large-for-cross-session-delivery)                                                                  |
 | `Can't open MCP settings while no terminal is attached to this background session`                                                                                                            | [Background session errors](#commands-refused-in-a-background-session)                                                        |
 | `Can't open MCP settings in a background session`                                                                                                                                             | [Background session errors](#commands-refused-in-a-background-session)                                                        |
 | `blocked because the path is spelled in a form that cannot be safely resolved`                                                                                                                | [Background session errors](#write-or-command-blocked-because-the-path-cannot-be-safely-resolved)                             |
@@ -747,6 +755,27 @@ The middle of the message names what failed:
 
 Before v2.1.224, `OAuth token refresh failed — run /login to re-authenticate` read `OAuth token refresh failed — re-authenticate, then re-enable Remote Control`, and `JWT refresh failed: no OAuth token — run /login` read `no OAuth token available for recovery (code <N>)`. The `Claude.ai login expired`, `Claude.ai login was rejected`, and `OAuth token unavailable` messages were added in v2.1.225.
 
+<h3 id="remote-control-stopped-because-the-signed-in-account-changed">
+  Remote Control stopped because the signed-in account changed
+</h3>
+
+Claude Code shows this line during a [Remote Control](/docs/en/remote-control) session when you sign in to a different claude.ai account or organization on this machine. You made the switch outside the Claude Code session, for example by running `/login` in another terminal.
+
+A Remote Control session that you started while signed in through `/login` belongs to the claude.ai account and organization that were signed in at the time.
+
+```text theme={null}
+Remote Control disconnected — signed-in claude.ai account or organization changed on this machine — run /remote-control to start a session for the current account, or /login to switch back, then /remote-control
+```
+
+Claude Code stops the Remote Control session as soon as claude.ai confirms that the account or organization changed. Your local session keeps running without Remote Control.
+
+**What to do:**
+
+* Run `/remote-control` to start a new Remote Control session under the current account or organization
+* To switch back, run `/login` and sign in to the previous account or organization again. Then run `/remote-control`.
+
+Before v2.1.234, Claude Code didn't notice when you switched to a different account or organization outside the Claude Code session. Claude Code kept the Remote Control session connected until a later request to the Remote Control server failed with `Remote Control server rejected the request (HTTP 404)`. That failure could come hours after the switch.
+
 ### OAuth token revoked or expired
 
 Your saved login is no longer valid. A revoked token means you signed out everywhere or an admin removed access; an expired token means the automatic refresh failed mid-session.
@@ -1062,6 +1091,40 @@ Resuming with `claude --resume` or `claude --continue` reconnects to the [Remote
 
 If the server reports instead that the previous session is gone, you don't see this message. Claude Code starts a new session in its place or shows [`Previous session is unavailable — run /remote-control to start a new one`](/docs/en/remote-control#previous-session-is-unavailable), depending on [the conversation's reconnection record](/docs/en/remote-control#resume-outcomes). From v2.1.227 through v2.1.231, Claude Code showed a message that starts with `Remote Control could not resume the previous session under the current login` instead, and [earlier versions behaved differently again](/docs/en/remote-control#reconnect-history).
 
+<h3 id="sessions-ended-while-this-machine-was-offline">
+  Sessions ended while this machine was offline
+</h3>
+
+Claude Code shows this message in the terminal running [`claude remote-control`](/docs/en/remote-control#start-a-remote-control-session) after your machine was offline long enough that the server cleaned up the Remote Control environment your machine was serving. The sessions in that environment ended, and you can't resume them. The count is the number of sessions that ended.
+
+```text theme={null}
+2 sessions ended while this machine was offline — the environment was cleaned up on the server and can't be resumed.
+```
+
+**What to do:**
+
+* When Claude Code lists kept worktrees under this message, pick up any uncommitted work from them
+* Run `claude remote-control` to start a fresh environment
+
+<h3 id="the-remote-sent-a-reply-this-version-cant-display">
+  The remote sent a reply this version can't display
+</h3>
+
+`/context` shows this line in a terminal [attached to a cloud session](/docs/en/claude-code-on-the-web#send-follow-ups-from-the-cli):
+
+```text theme={null}
+Couldn't show context usage: the remote sent a reply this version can't display
+```
+
+While your terminal is attached, `/context` and `/btw` ask the cloud session for their answer. Sometimes the answer arrives in a form your terminal's Claude Code can't render. The usual cause is a version difference between the two. `/context` then shows the line above instead of the usage breakdown. `/btw` shows `The remote session sent a reply this version can't display` instead of its answer. The cloud session keeps running, and other commands still work.
+
+**What to do:**
+
+* Update Claude Code with `claude update`, reattach, and rerun the command
+* If the line still appears, run `/feedback` and name the command
+
+Before v2.1.235, this case showed a raw JavaScript error instead, such as `undefined is not an object`.
+
 <h3 id="couldnt-share-the-transcript">
   Couldn't share the transcript
 </h3>
@@ -1091,6 +1154,22 @@ The conversation plus attached files exceeds the model's context window.
 Prompt is too long
 ```
 
+In an interactive session, Claude Code shows this error as:
+
+```text theme={null}
+Context limit reached · /compact or /clear to continue
+```
+
+The line names only `/clear` when [`DISABLE_COMPACT`](/docs/en/env-vars) is set. Longer forms of the error, such as the compaction-failed form below, keep the `Prompt is too long ·` wording. In `-p` output and the transcript, the text stays `Prompt is too long`.
+
+When you turned auto-compact off in your [user settings](/docs/en/settings#available-settings), the line also says so:
+
+```text theme={null}
+Context limit reached · /compact or /clear to continue · auto-compact is off · /config to turn it on
+```
+
+The **Auto-compact** toggle in `/config` writes `autoCompactEnabled` to user settings. The hint appears only when a `/config` change would take effect. For example, it doesn't appear when [`DISABLE_AUTO_COMPACT`](/docs/en/env-vars) or [`DISABLE_COMPACT`](/docs/en/env-vars) turned auto-compact off. It also doesn't appear when a higher-precedence scope, such as project or managed settings, set `autoCompactEnabled` to `false`. Nor does it appear in a terminal attached to a cloud session, where the cloud session owns auto-compact. Before v2.1.235, the line carried no auto-compact hint.
+
 Amazon Bedrock reports this condition as `Input is too long for requested model.`, which Claude Code handles the same way. Before v2.1.217, Claude Code didn't recognize the Bedrock wording, so auto-compact never triggered on it and `/compact` failed with the same error.
 
 When automatic compaction ran on this turn and failed on an underlying error, such as an unavailable model or an authentication failure, the message names that error after a separator:
@@ -1099,7 +1178,7 @@ When automatic compaction ran on this turn and failed on an underlying error, su
 Prompt is too long · automatic compaction failed: <the underlying error>
 ```
 
-Resolve the named error first; `/compact` fails on the same error until you do. Before v2.1.229, a failed automatic compaction surfaced the bare `Prompt is too long` without the cause.
+Resolve the named error first; `/compact` fails on the same error until you do. Before v2.1.229, a failed automatic compaction surfaced `Prompt is too long` without the cause.
 
 **What to do:**
 
@@ -1108,13 +1187,13 @@ Resolve the named error first; `/compact` fails on the same error until you do. 
 * Disable MCP servers you are not using with `/mcp disable <name>` to remove their tool definitions from context
 * Trim large `CLAUDE.md` memory files, or move instructions into [path-scoped rules](/docs/en/memory#path-specific-rules) that load only when relevant
 * Subagents inherit every MCP tool definition from the parent session, which can fill their context window before the first turn. Disable MCP servers you are not using before spawning subagents.
-* Auto-compact is on by default and normally prevents this error. If you have set [`DISABLE_AUTO_COMPACT`](/docs/en/env-vars), re-enable it or run `/compact` manually before the window fills.
+* Auto-compact is on by default and normally prevents this error. If you turned it off in `/config` or with [`DISABLE_AUTO_COMPACT`](/docs/en/env-vars), turn it back on. If you keep it off, run `/compact` yourself before the window fills.
 
 See [Explore the context window](/docs/en/context-window) for an interactive view of how context fills up.
 
 ### Context exceeds the token limit
 
-`/context` shows this warning at the top of its output when the conversation has grown past the model's context window. Requests fail with [`Prompt is too long`](#prompt-is-too-long) until you free space.
+`/context` shows this warning at the top of its output when the conversation has grown past the model's context window. Requests fail with [`Prompt is too long`](#prompt-is-too-long) until you free space. An interactive session shows that error as the `Context limit reached` line.
 
 ```text theme={null}
 Context exceeds the 200k-token limit by 94k tokens — run /compact or /clear to continue.
@@ -1143,7 +1222,7 @@ Before v2.1.216, `/context` showed usage above 100% with no warning line explain
 Error during compaction: Conversation too long. Press esc twice to go up a few messages and try again.
 ```
 
-This can happen when the window is already full at the moment auto-compact triggers, or when you run `/compact` after seeing `Prompt is too long`.
+This can happen when the window is already full at the moment auto-compact triggers, or when you run `/compact` after seeing [`Prompt is too long`](#prompt-is-too-long). In an interactive session, that error is the `Context limit reached` line.
 
 **What to do:**
 
@@ -1851,6 +1930,26 @@ When Claude Code refuses the Write tool, the message ends `and cannot be written
 * If Claude should be able to change the file, remove or narrow the `Read` deny rule in `/permissions` or in [settings](/docs/en/settings#permission-settings)
 * If the file must stay untouched, keep the rule and add an `Edit` deny rule for the same path to block the NotebookEdit tool too
 
+<h3 id="subagent-type-is-required">
+  subagent\_type is required
+</h3>
+
+```text theme={null}
+subagent_type is required: the general-purpose agent is not available in this session. Available agents: ...
+```
+
+Claude called the [Agent tool](/docs/en/tools-reference#agent-tool-behavior) without a `subagent_type`, and this session has no [general-purpose subagent](/docs/en/sub-agents#built-in-subagents) to fall back on. That is the case in two setups:
+
+* [`CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS=1`](/docs/en/env-vars) is set in non-interactive mode, which removes every built-in subagent
+* The session's main-thread agent has a [`tools: Agent(...)` allowlist](/docs/en/sub-agents#restrict-which-subagents-can-be-spawned) that leaves out `general-purpose`
+
+**What to do:**
+
+* Usually nothing: the message lists the subagents the session does have, so Claude can retry with one of them
+* If Claude keeps failing, add `general-purpose` to the `tools: Agent(...)` allowlist, or unset `CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS`
+
+Before v2.1.235, the same call failed with `Agent type 'general-purpose' not found`.
+
 ### Memory index is over its read limit
 
 Claude wrote to the [auto memory](/docs/en/memory#auto-memory) index `MEMORY.md` and left it over one of its read limits: 200 lines or 25KB. The write succeeded, but only the first 200 lines or 25KB, whichever comes first, load at the start of a session, so everything past the limit is dropped each time the index is read. Before v2.1.210, an over-limit index was silently truncated on the next load with no write-time signal.
@@ -1909,6 +2008,23 @@ When you message a teammate yourself, typing `@name` followed by the message in 
 
 * Ask the sender to resend the message; contention for the inbox lock is transient and clears on retry
 * Check free disk space, and check that `~/.claude/teams` and the files under it are writable by your user
+
+### Message too large for cross-session delivery
+
+Claude's [cross-session message](/docs/en/cross-session-messaging) to another of your sessions on this machine was too long to send. Claude Code refused it, and the receiving session got nothing. The refusal appears in the sending session's tool result, not as a banner in your terminal. It names both sizes and how to make the message fit:
+
+```text wrap theme={null}
+Failed to send to api-worker: Message too large for cross-session delivery: the serialized message is 1,203,844 characters and the limit is 1,048,576. Shorten the message text — put bulk content in a file the recipient can read rather than in the message — or split it into smaller messages.
+```
+
+Resending the same text fails the same way.
+
+**What to do:**
+
+* Ask Claude to summarize the message, or to put the bulk content in a file and send the file's path
+* Ask Claude to split the content across several shorter messages
+
+Before v2.1.235, Claude Code reported an oversized message as sent. The receiving session dropped it unread.
 
 ## Background session errors
 
