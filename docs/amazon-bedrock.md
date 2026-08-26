@@ -185,6 +185,8 @@ These two settings have different trigger conditions:
 * **`awsAuthRefresh`**: runs only when Claude Code detects that your AWS credentials are expired, either locally based on their timestamp or when the API returns a credential error, then retries the request with refreshed credentials.
 * **`awsCredentialExport`**: runs at session start and on each credential reload, even when the credentials in your AWS default credential provider chain are still valid. Use this when your Amazon Bedrock account requires cross-account credentials that differ from the ones the default provider chain would resolve.
 
+Before running the `awsAuthRefresh` command, Claude Code makes an STS `GetCallerIdentity` call to confirm that your credentials are actually expired, and skips the command when they still work. Claude Code sends this check through your [proxy configuration](/docs/en/network-config#proxy-configuration), honoring `HTTPS_PROXY` and `NO_PROXY`. Before v2.1.239, Claude Code sent this check directly and hung at startup on networks that only allow egress through a proxy.
+
 ##### Example configuration
 
 ```json theme={null}
@@ -317,7 +319,7 @@ export ANTHROPIC_MODEL='arn:aws:bedrock:us-east-2:your-account-id:application-in
 # export ENABLE_PROMPT_CACHING_1H=1
 ```
 
-The 1-hour cache TTL is billed at a higher rate than the 5-minute default. See [cache lifetime](/docs/en/prompt-caching#cache-lifetime).
+The 1-hour cache TTL is billed at a higher rate than the 5-minute default. See [cache lifetime](/docs/en/prompt-caching#cache-lifetime). To set different TTLs for your main conversation and for the requests Claude Code makes outside it, [choose the TTL yourself](/docs/en/prompt-caching#choose-the-ttl-yourself).
 
 <Note>Prompt caching may not be available in all Amazon Bedrock regions. If cache token counts stay at zero, check [supported models, regions, and limits](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html#prompt-caching-models) in the Amazon Bedrock documentation.</Note>
 
@@ -568,6 +570,8 @@ If streaming requests fail with an error that begins `Bedrock streaming response
 Before v2.1.208, the same misconfiguration surfaced as `API Error: Truncated event message received` after the whole response had been buffered.
 
 To fix it, configure the gateway to pass the `InvokeModelWithResponseStream` response body and its `Content-Type` header through unmodified. If the gateway rewrites only the header and passes the binary body through intact, set [`CLAUDE_CODE_DISABLE_BEDROCK_CONTENT_TYPE_GUARD=1`](/docs/en/env-vars) to skip the check until the gateway is fixed. With the check off, a response body that was transformed fails with `Truncated event message received` again.
+
+When a successful streaming response arrives with a missing or empty `Content-Type` header, Claude Code decodes the body as the binary event-stream format. Amazon Bedrock always sends the header, so a missing header means an intermediary stripped it. If your proxy strips the header and also re-emits the body as server-sent events, set [`CLAUDE_CODE_DISABLE_BEDROCK_CONTENT_TYPE_DEFAULT=1`](/docs/en/env-vars) so Claude Code reads the body as server-sent events instead.
 
 ### Zero token counts in /context
 

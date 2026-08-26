@@ -638,6 +638,7 @@ scope: "Which settings files can set the key: user (~/.claude/settings.json), pr
 | [`disableClaudeAiConnectors`](#disableclaudeaiconnectors)                                       | Turn off [claude.ai connectors](/docs/en/mcp#disable-claude-ai-connectors) so Claude Code doesn't fetch them                                                                                                                     | MCP                                | Any file                |
 | [`disableCommandPluginSources`](#disablecommandpluginsources)                                   | Block [plugins](/docs/en/plugins) that install by running a marketplace-declared command                                                                                                                                         | Plugins and skills                 | Managed                 |
 | [`disableDeepLinkRegistration`](#disabledeeplinkregistration)                                   | Stop Claude Code from registering the [`claude-cli://` handler](/docs/en/deep-links)                                                                                                                                             | Remote, desktop, and notifications | Any file                |
+| [`disableDesktopLocalSessions`](#disabledesktoplocalsessions)                                   | Turn off [Desktop Code sessions](/docs/en/desktop#local-sessions-on-managed-devices) that run on the device, leaving SSH to other hosts and cloud                                                                                | Remote, desktop, and notifications | Managed                 |
 | [`disabledMcpjsonServers`](#disabledmcpjsonservers)                                             | Reject specific servers from a project's [`.mcp.json`](/docs/en/mcp#project-scope)                                                                                                                                               | MCP                                | Any file                |
 | [`disableMobileSimulatorTools`](#disablemobilesimulatortools)                                   | Block Claude's tools in the [desktop](/docs/en/desktop) iOS Simulator pane                                                                                                                                                       | Tools                              | Managed                 |
 | [`disableRemoteControl`](#disableremotecontrol)                                                 | Turn off [Remote Control](/docs/en/remote-control) everywhere it can start                                                                                                                                                       | Remote, desktop, and notifications | Any file                |
@@ -702,6 +703,7 @@ scope: "Which settings files can set the key: user (~/.claude/settings.json), pr
 | [`preferredNotifChannel`](#preferrednotifchannel)                                               | Choose a [terminal bell or desktop notification](/docs/en/terminal-config#get-a-terminal-bell-or-notification) for task completion                                                                                               | Remote, desktop, and notifications | Any file                |
 | [`prefersReducedMotion`](#prefersreducedmotion)                                                 | [Reduce or turn off](/docs/en/accessibility#accessibility-settings) spinner, shimmer, and flash animations                                                                                                                       | Interface and terminal             | Any file                |
 | [`processWrapper`](#processwrapper)                                                             | Run Claude Code's background processes through a [corporate launcher](/docs/en/corporate-launcher) on macOS and Linux                                                                                                            | Agents, sessions, and worktrees    | User or managed         |
+| [`promptCacheTtl`](#promptcachettl)                                                             | Choose the [prompt cache lifetime](/docs/en/prompt-caching#cache-lifetime) for the main conversation                                                                                                                             | Model and responses                | Any file                |
 | [`promptSuggestionEnabled`](#promptsuggestionenabled)                                           | Hide the grayed-out [prompt suggestions](/docs/en/interactive-mode#prompt-suggestions) in the input box                                                                                                                          | Interface and terminal             | Any file                |
 | [`prUrlTemplate`](#prurltemplate)                                                               | Point PR links at an internal code-review tool instead of github.com                                                                                                                                                        | Git and attribution                | Any file                |
 | [`remote.defaultEnvironmentId`](#remote-defaultenvironmentid)                                   | Pick the default [cloud environment](/docs/en/cloud-environments) for `claude --cloud`; a self-hosted `ccpool_` ID is read only from user and managed settings and `--settings`                                                  | Remote, desktop, and notifications | Any file                |
@@ -770,6 +772,7 @@ scope: "Which settings files can set the key: user (~/.claude/settings.json), pr
 | [`strictPluginOnlyCustomization.hooks`](#strictpluginonlycustomization-hooks)                   | Lock [hooks](/docs/en/hooks) to plugin and managed sources                                                                                                                                                                       | Plugins and skills                 | Managed                 |
 | [`strictPluginOnlyCustomization.mcp`](#strictpluginonlycustomization-mcp)                       | Lock [MCP servers](/docs/en/mcp) to plugin and managed sources                                                                                                                                                                   | Plugins and skills                 | Managed                 |
 | [`strictPluginOnlyCustomization.skills`](#strictpluginonlycustomization-skills)                 | Lock [skills](/docs/en/skills) to plugin and managed sources                                                                                                                                                                     | Plugins and skills                 | Managed                 |
+| [`subagentPromptCacheTtl`](#subagentpromptcachettl)                                             | Choose the [prompt cache lifetime](/docs/en/prompt-caching#cache-lifetime) for subagents and other requests outside the main conversation                                                                                        | Model and responses                | Any file                |
 | [`subagentStatusLine`](#subagentstatusline)                                                     | Rewrite rows in the [subagent](/docs/en/sub-agents) task display with your own command                                                                                                                                           | Interface and terminal             | Any file                |
 | [`switchModelsOnFlag`](#switchmodelsonflag)                                                     | Switch models automatically or pause when a [safety classifier](/docs/en/model-config#ask-before-switching) flags a request                                                                                                      | Model and responses                | Any file                |
 | [`syncClaudeAiSkills`](#syncclaudeaiskills)                                                     | Stop downloading the [skills enabled on your claude.ai account](/docs/en/skills#how-synced-skills-behave) and hide the ones already synced                                                                                       | Plugins and skills                 | User, local, or managed |
@@ -1076,6 +1079,28 @@ This example selects the built-in Explanatory style, which adds educational insi
 }
 ```
 
+### `promptCacheTtl`
+
+Choose how long the [prompt cache](/docs/en/prompt-caching) holds the main conversation. This key applies to your interactive, `-p`, and Agent SDK turns, together with the helpers Claude Code runs inline with them. The one-hour lifetime keeps the cache warm across longer breaks, and the API [bills each cache write at a higher rate](https://platform.claude.com/docs/en/build-with-claude/prompt-caching#pricing) than at the five-minute lifetime. Requires Claude Code v2.1.242 or later.
+
+* **Scope**: [`Any file`](#scopes)
+* **Type**: string, one of:
+  * `"5m"`: the cache holds for five minutes
+  * `"1h"`: the cache holds for an hour
+* **Default**: unset, so each main-conversation request gets [its default lifetime](/docs/en/prompt-caching#which-ttl-each-request-gets)
+* **Per-session overrides**: [`FORCE_PROMPT_CACHING_5M`](/docs/en/env-vars) takes precedence over everything else, then [`CLAUDE_CODE_PROMPT_CACHE_TTL`](/docs/en/env-vars), then this key, and last [`ENABLE_PROMPT_CACHING_1H`](/docs/en/env-vars)
+
+This example keeps the main conversation on the one-hour lifetime and leaves subagents on five minutes:
+
+```json settings.json theme={null}
+{
+  "promptCacheTtl": "1h",
+  "subagentPromptCacheTtl": "5m"
+}
+```
+
+For what each lifetime costs, see [Cache lifetime](/docs/en/prompt-caching#cache-lifetime).
+
 ### `showThinkingSummaries`
 
 See summaries of Claude's [extended thinking](/docs/en/model-config#extended-thinking) in interactive sessions. Set it if you want the full summaries when you expand thinking with `Ctrl+O`. When unset or `false`, the Anthropic API redacts thinking blocks and Claude Code shows a collapsed stub; third-party providers don't redact.
@@ -1093,6 +1118,27 @@ See summaries of Claude's [extended thinking](/docs/en/model-config#extended-thi
 ```
 
 Redaction only changes what you see, not what the model generates: to reduce thinking spend, [lower the budget or disable thinking](/docs/en/model-config#extended-thinking) instead. This setting has no effect in non-interactive mode (`-p`), the Agent SDK, or IDE extensions such as VS Code.
+
+### `subagentPromptCacheTtl`
+
+Choose how long the [prompt cache](/docs/en/prompt-caching) holds the requests Claude Code makes outside the main conversation. This key applies to [subagents](/docs/en/sub-agents), [workflows](/docs/en/workflows), and Claude Code's own background and helper requests, such as compaction and session titles. The one-hour lifetime keeps the cache warm across longer breaks, and the API [bills each cache write at a higher rate](https://platform.claude.com/docs/en/build-with-claude/prompt-caching#pricing) than at the five-minute lifetime. Requires Claude Code v2.1.242 or later.
+
+* **Scope**: [`Any file`](#scopes)
+* **Type**: string, one of:
+  * `"5m"`: the cache holds for five minutes
+  * `"1h"`: the cache holds for an hour
+* **Default**: unset, so each of these requests gets [its default lifetime](/docs/en/prompt-caching#which-ttl-each-request-gets)
+* **Per-session overrides**: [`FORCE_PROMPT_CACHING_5M`](/docs/en/env-vars) takes precedence over everything else, then [`CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`](/docs/en/env-vars), then this key, and last [`ENABLE_PROMPT_CACHING_1H`](/docs/en/env-vars), which asks for the one-hour lifetime on every request
+
+This example gives subagents and the other requests outside the main conversation the one-hour lifetime:
+
+```json settings.json theme={null}
+{
+  "subagentPromptCacheTtl": "1h"
+}
+```
+
+This key covers the requests [`promptCacheTtl`](#promptcachettl) doesn't, so set both to choose a lifetime for every request Claude Code makes. For how a subagent's cache differs from the main conversation's, see [Subagents and the cache](/docs/en/prompt-caching#subagents-and-the-cache).
 
 ### `switchModelsOnFlag`
 
@@ -4649,6 +4695,26 @@ Stop Claude Code from registering the `claude-cli://` protocol handler with the 
   "disableDeepLinkRegistration": "disable"
 }
 ```
+
+### `disableDesktopLocalSessions`
+
+Turn off Code sessions that run on the device in the [desktop app](/docs/en/desktop#local-sessions-on-managed-devices), for deployments where developers should work on remote machines over SSH. In the Code tab, the **Local** environment stays in the environment dropdown but is grayed out and can't be selected, with a tooltip saying your organization turned it off; on Windows the WSL entry is grayed out the same way, though whether WSL sessions run on a managed device at all is [governed separately](/docs/en/admin-setup#wsl-sessions-in-claude-code-desktop). New sessions default to the first [SSH connection](/docs/en/desktop#ssh-sessions) if one is configured, and the app refuses to start or resume a session on the device, including an SSH connection back to the same machine. SSH sessions to other hosts and cloud sessions are unaffected. The desktop app reads this key; the terminal CLI ignores it.
+
+* **Scope**: [`Managed`](#scopes)
+* **Type**: Boolean; only the JSON Boolean `true` takes effect
+  * `true`: the desktop app offers no on-device Code sessions; existing local sessions stay listed but can't continue
+  * `false`: local sessions stay available
+* **Default**: unset, so local sessions are available
+
+```json managed-settings.json theme={null}
+{
+  "disableDesktopLocalSessions": true
+}
+```
+
+The desktop app ignores any other value, and a value that isn't a Boolean, such as the string `"true"` or `1`, also logs a warning. Pair it with [`sshConfigs`](#sshconfigs) so users land on a working connection, and with [`sshHostAllowlist`](#sshhostallowlist) to limit which hosts they can reach. See [Local sessions on managed devices](/docs/en/desktop#local-sessions-on-managed-devices).
+
+Claude Desktop supplies Code sessions with policy derived from your desktop configuration, for example the egress allowlist, filesystem sandbox, and MCP restrictions in third-party deployments. Claude Code ignores those parent settings whenever an [admin source](/docs/en/managed-settings#which-managed-source-claude-code-uses) is present: server-managed settings, an MDM or OS-level policy, or a managed settings file. Deploying this key through one of those on a device that had none before, as in third-party deployments, therefore stops the desktop-derived policies from applying. [Let an embedding host add policy](/docs/en/managed-settings#let-an-embedding-host-add-policy) covers when parent settings can still merge; this holds for any key you deploy that way, not only this one.
 
 ### `disableRemoteControl`
 
