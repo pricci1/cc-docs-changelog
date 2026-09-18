@@ -164,6 +164,8 @@ Each plugin entry needs at minimum a `name` and a `source` that tells Claude Cod
   **Reserved names**: the following marketplace names are reserved for official Anthropic use and can't be used by third-party marketplaces: `claude-code-marketplace`, `claude-code-plugins`, `claude-plugins-official`, `claude-plugins-community`, `claude-community`, `anthropic-marketplace`, `anthropic-plugins`, `agent-skills`, `anthropic-agent-skills`, `knowledge-work-plugins`, `life-sciences`, `claude-for-legal`, `claude-for-financial-services`, `financial-services-plugins`, `first-party-plugins`, `claude-tag-plugins`, `healthcare`. Names that impersonate official marketplaces, such as `official-claude-plugins` or `anthropic-plugins-v2`, are also blocked. Reserving these names prevents a third-party marketplace from presenting itself as an Anthropic-published source.
 
   Claude Code re-checks reserved names every time it loads a marketplace, not only when you add one. A marketplace that was registered under one of these names before the name became reserved stops loading and reports that it is [registered from an untrusted source](/docs/en/errors#marketplace-is-registered-from-an-untrusted-source). Remove that marketplace and re-add it from the official Anthropic source. A third-party marketplace affected by a newly reserved name loads again as soon as you re-add it under a different name. Before v2.1.205, `first-party-plugins` and `healthcare` weren't reserved, and a marketplace already registered under a reserved name kept loading. Before v2.1.265, `claude-tag-plugins` wasn't reserved.
+
+  You also can't name a marketplace `npm`, `pip`, `uv`, `cargo`, `github`, or `gh`, in any casing. This check requires Claude Code v2.1.275 or later.
 </Note>
 
 ### Owner fields
@@ -258,7 +260,7 @@ Claude Code copies each installed plugin into the local versioned plugin cache a
 | `github`      | object                          | `repo`, `ref?`, `sha?`             |                                                                                                                                                                                                                                                     |
 | `url`         | object                          | `url`, `ref?`, `sha?`              | Git URL source                                                                                                                                                                                                                                      |
 | `git-subdir`  | object                          | `url`, `path`, `ref?`, `sha?`      | Subdirectory within a git repo. Clones sparsely to minimize bandwidth for monorepos                                                                                                                                                                 |
-| `npm`         | object                          | `package`, `version?`, `registry?` | Installed via `npm install`                                                                                                                                                                                                                         |
+| `npm`         | object                          | `package`, `version?`, `registry?` | npm package, fetched with your npm client and unpacked without running install scripts                                                                                                                                                              |
 | `archive`     | object                          | `url`, `sha256?`                   | Zip archive downloaded over HTTPS. Works without git or npm on the user's machine. Requires Claude Code v2.1.224 or later                                                                                                                           |
 | `command`     | object                          | `command`, `timeout?`, `mode?`     | Plugin directory produced by running a local command, re-run once per session to pick up changes. Requires Claude Code v2.1.229 or later                                                                                                            |
 
@@ -403,7 +405,11 @@ The `url` field also accepts a GitHub shorthand (`owner/repo`) or SSH URLs (`git
 
 ### npm packages
 
-Plugins distributed as npm packages are installed using `npm install`. This works with any package on the public npm registry or a private registry your team hosts.
+An npm source can name any package on the public npm registry or on a private registry your team hosts. Claude Code resolves the package with your npm client, downloads the tarball, and unpacks it into the plugin cache.
+
+The package's install scripts, such as `preinstall` or `postinstall`, never run, and its dependencies aren't installed during the fetch.
+
+If the package ships a supported lockfile beside its `package.json`, Claude Code installs those [Node.js package dependencies](/docs/en/plugins-reference#node-js-package-dependencies) in a separate step, also with scripts disabled. Otherwise, publish the plugin with everything it needs already built. An MCP server that needs other packages can launch through `npx`, which installs them at first run.
 
 ```json theme={null}
 {
@@ -749,6 +755,8 @@ The `strict` field controls whether `plugin.json` is the authority for component
 
 ## Host and distribute marketplaces
 
+When users add a marketplace hosted in a git repository, or install a git-based plugin it lists, Claude Code clones that marketplace or plugin repository onto their machine. The clone never downloads [Git LFS](https://git-lfs.com) content, so LFS-tracked files arrive as pointer files. Keep the files your plugins need out of LFS.
+
 ### Host on GitHub (recommended)
 
 GitHub is the recommended way to host and distribute a marketplace:
@@ -777,16 +785,18 @@ When you run `/plugin marketplace add`, `/plugin install`, `/plugin update`, or 
 
 #### Background auto-updates
 
-By default, the background refresh disables git credential helpers for its `git pull`, so the pull can't authenticate to private repositories over HTTPS even when a helper is configured. SSH remotes aren't affected: a key loaded in `ssh-agent` authenticates background pulls the same way as the commands you run. When the background pull fails, Claude Code falls back to re-cloning the marketplace from scratch. The re-clone does use your stored git credentials, but it can [time out on large repositories](#git-operations-time-out), so private-marketplace auto-updates may fail intermittently.
+By default, the background refresh disables git credential helpers when it checks the marketplace's remote for new commits, so the check can't authenticate to private repositories over HTTPS even when a helper is configured. SSH remotes aren't affected: a key loaded in `ssh-agent` authenticates the background check the same way as the commands you run.
+
+When the check finds new commits, or fails because it can't reach or authenticate to the remote, Claude Code clones the marketplace again and swaps the new clone in. If that clone fails, the existing checkout stays in place. The re-clone does use your stored git credentials, but it can [time out on large repositories](#git-operations-time-out), so private-marketplace auto-updates may fail intermittently.
 
 Two settings make private marketplaces behave predictably:
 
-* Set `CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1` to keep the existing clone when the background pull fails, instead of deleting and re-cloning. Your plugins keep working from the last synced state, and manual updates with `/plugin marketplace update` still pull with your credentials.
-* Configure a git credential helper, for example with `gh auth setup-git` for GitHub, so the re-clone fallback can authenticate without prompting.
+* Set `CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1` to keep the existing checkout without attempting the re-clone when the background check can't reach or authenticate to the remote. Your plugins keep working from the last synced state, and manual updates with `/plugin marketplace update` still authenticate with your credentials.
+* Configure a git credential helper, for example with `gh auth setup-git` for GitHub, so the re-clone can authenticate without prompting.
 
 Setting a provider token such as `GITHUB_TOKEN` in your environment doesn't by itself enable background authentication. Tokens take effect only through a configured credential helper, for example the `gh` CLI's helper, which reads `GH_TOKEN` and `GITHUB_TOKEN`.
 
-To make the background pull itself authenticate over HTTPS, configure a global git URL rewrite. The rewrite embeds a token in the remote URL, so it takes effect even though the background pull disables credential helpers, and a successful pull skips the re-clone fallback. The following example rewrites the marketplace repository's URL to include an access token:
+To make the background check itself authenticate over HTTPS, configure a global git URL rewrite. The rewrite embeds a token in the remote URL, so it takes effect even though the background check disables credential helpers. When the check finds the checkout up to date, Claude Code skips the re-clone. The following example rewrites the marketplace repository's URL to include an access token:
 
 ```bash theme={null}
 git config --global url."https://x-access-token:YOUR_TOKEN@github.com/acme-corp/plugins".insteadOf "https://github.com/acme-corp/plugins"
@@ -805,7 +815,9 @@ Each provider expects a different username in the rewritten URL, and the same pa
 The rewrite stores the token in plaintext in your gitconfig, so use a token with read-only access to the marketplace repository.
 
 <Note>
-  In CI/CD environments, configure a git credential helper before installing plugins from private repositories. On GitHub Actions, export a token with read access to the marketplace repository as `GH_TOKEN`, then run `gh auth setup-git`. The default workflow token can only access the workflow's own repository, so a private marketplace in another repository needs a personal access token or app token. A global URL rewrite configured in the pipeline also authenticates the background pull directly.
+  In CI/CD environments, configure a git credential helper before installing plugins from private repositories. On GitHub Actions, export a token with read access to the marketplace repository as `GH_TOKEN`, then run `gh auth setup-git`. The default workflow token can only access the workflow's own repository, so a private marketplace in another repository needs a personal access token or app token.
+
+  If you configure a global URL rewrite in the pipeline, the rewrite also authenticates the background check directly.
 </Note>
 
 ### Distribute through organization settings
@@ -915,7 +927,8 @@ At startup, Claude Code registers marketplaces found in the seed's `known_market
 
 Behavior details:
 
-* **Read-only**: the seed directory is never written to. Auto-updates are disabled for seed marketplaces since git pull would fail on a read-only filesystem.
+* **Read-only**: Claude Code never writes to the seed directory.
+* **Auto-updates disabled**: seed marketplaces don't auto-update.
 * **Seed entries take precedence**: marketplaces declared in the seed overwrite any matching entries in the user's configuration on each startup. To opt out of a seed plugin, use `/plugin disable` rather than removing the marketplace.
 * **Path resolution**: Claude Code locates marketplace content by probing `$CLAUDE_CODE_PLUGIN_SEED_DIR/marketplaces/<name>/` at runtime, not by trusting paths stored inside the seed's JSON. This means the seed works correctly even when mounted at a different path than where it was built.
 * **Mutation is blocked**: running `/plugin marketplace remove` or `/plugin marketplace update` against a seed-managed marketplace fails with guidance to ask your administrator to update the seed image.
@@ -1054,6 +1067,8 @@ The allowlist uses exact matching for most source types, apart from owner-wildca
 * For `pathPattern` sources: the marketplace's filesystem path is matched against the regex pattern
 
 The allowlist's exact matching treats URLs that differ only by a trailing slash, a `.git` suffix, or the `ssh://` and `https://` scheme as different values. If your organization's marketplace can be cloned by more than one URL form, prefer a `hostPattern` entry over a literal URL so the `https://`, `ssh://`, and `user@host:path` forms all match.
+
+A [marketplace hosted on claude.ai](/docs/en/discover-plugins#add-from-claude-ai) is matched by host: a `hostPattern` entry that matches `claude.ai` governs it, in `strictKnownMarketplaces` and in `blockedMarketplaces`. On the allowlist, such an entry doesn't admit a member's personal claude.ai uploads. Requires Claude Code v2.1.273 or later.
 
 Because `strictKnownMarketplaces` is set in [managed settings](/docs/en/managed-settings), individual users and project configurations can't override these restrictions.
 
@@ -1238,10 +1253,11 @@ A URL must include its scheme. As of Claude Code v2.1.196, a host typed without 
 
 **Options:**
 
-| Option                | Description                                                                                                                                         | Default |
-| :-------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- | :------ |
-| `--scope <scope>`     | Where to declare the marketplace: `user`, `project`, or `local`. See [Plugin installation scopes](/docs/en/plugins-reference#plugin-installation-scopes) | `user`  |
-| `--sparse <paths...>` | Limit checkout to specific directories via git sparse-checkout. Useful for monorepos                                                                |         |
+| Option                | Description                                                                                                                                                               | Default |
+| :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------ |
+| `--scope <scope>`     | Where to declare the marketplace: `user`, `project`, or `local`. See [Plugin installation scopes](/docs/en/plugins-reference#plugin-installation-scopes)                       | `user`  |
+| `--sparse <paths...>` | Limit checkout to specific directories via git sparse-checkout. Useful for monorepos                                                                                      |         |
+| `--claudeai`          | Read the argument as the name of a [marketplace hosted on claude.ai](/docs/en/discover-plugins#add-from-claude-ai) instead of a source. Requires Claude Code v2.1.273 or later |         |
 
 Add a marketplace from GitHub using `owner/repo` shorthand:
 
@@ -1285,6 +1301,14 @@ For a monorepo, limit the checkout to the directories that contain plugin conten
 claude plugin marketplace add acme-corp/monorepo --sparse .claude-plugin plugins
 ```
 
+Add a [marketplace hosted on claude.ai](/docs/en/discover-plugins#add-from-claude-ai) by the name printed in the `From claude.ai:` section of `claude plugin marketplace list`:
+
+```bash theme={null}
+claude plugin marketplace add --claudeai claudeai-organization-library
+```
+
+With `--claudeai`, the command refuses `--scope` and `--sparse`. The marketplace is hosted for your account, not declared in a settings file, so you can't share it through a project's `.claude/settings.json`.
+
 ### Plugin marketplace list
 
 List all configured marketplaces.
@@ -1300,6 +1324,10 @@ claude plugin marketplace list [options]
 | `--json` | Output as JSON |
 
 With `--json`, each entry includes `name`, `source`, an `installLocation` field with the local cache path where the marketplace is stored, and source-specific fields: `repo` for GitHub sources, `url` for git and URL sources, and `path` for local sources. GitHub and git sources also include a `ref` field when the marketplace was added with a pinned branch or tag.
+
+An added [claude.ai marketplace](/docs/en/discover-plugins#add-from-claude-ai) has no local clone, so its entry carries its claude.ai identifiers, `marketplaceId` and `organizationUuid`, in place of `installLocation`.
+
+In terminal sessions where [plugins sync from your claude.ai account](/docs/en/plugins-reference#synced-plugins), the text listing ends with a `From claude.ai:` section naming what claude.ai lists for your account beyond the marketplaces you've added. To add one of them, see [Add from claude.ai](/docs/en/discover-plugins#add-from-claude-ai). The `--json` output covers configured marketplaces only and leaves that section out. Requires Claude Code v2.1.273 or later.
 
 ### Plugin marketplace remove
 
@@ -1458,20 +1486,23 @@ For manual installation and updates:
 
 For background auto-updates:
 
-* By default, background refreshes disable git credential helpers for the pull, so the pull can't authenticate over HTTPS. SSH remotes with a key loaded in `ssh-agent` still authenticate. A failed pull triggers a re-clone from scratch, which uses your stored credentials but may time out on large repositories
-* Set `CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1` to keep the existing clone when the background pull fails
-* Configure a git credential helper, for example `gh auth setup-git`, so the re-clone fallback can authenticate
+* By default, background refreshes disable git credential helpers when they check the remote for new commits, so the check can't authenticate over HTTPS. SSH remotes with a key loaded in `ssh-agent` still authenticate
+* When the check can't authenticate, Claude Code re-clones the marketplace with your stored credentials, but the re-clone may time out on large repositories
+* Set `CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1` to keep the existing checkout without attempting the re-clone when the background check can't reach or authenticate to the remote
+* Configure a git credential helper, for example `gh auth setup-git`, so the re-clone can authenticate
 * If the re-clone times out on a large repository, increase the limit with [`CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS`](#git-operations-time-out)
-* Configure a [git URL rewrite](#private-repositories) scoped to the marketplace repository so the background pull authenticates directly
+* Configure a [git URL rewrite](#private-repositories) scoped to the marketplace repository so the background check authenticates directly
 * Or update private marketplaces manually with `/plugin marketplace update <name>`, which uses your credentials
 
 ### Marketplace updates fail in offline environments
 
-**Symptoms**: Marketplace `git pull` fails in the background and Claude Code repeatedly attempts a re-clone that can't succeed.
+**Symptoms**: In an offline or airgapped environment, the background marketplace refresh can't reach the remote and Claude Code repeatedly attempts a re-clone that can't succeed.
 
-**Cause**: By default, when a `git pull` fails, Claude Code attempts a re-clone from scratch. In offline or airgapped environments, re-cloning fails the same way, and the restore of the previous cache afterward is best-effort. The refresh runs in the background after startup, so it doesn't delay startup, but each session repeats the failed attempts and each git operation can wait out the [120-second timeout](#git-operations-time-out).
+**Cause**: The background refresh checks the marketplace's remote for new commits, and when the check can't reach the remote, Claude Code attempts to clone the marketplace again. Offline, the clone fails the same way and the existing checkout stays in place. Before v2.1.274, the refresh ran `git pull` in the existing checkout, moved the checkout aside to re-clone when the pull failed, and restored it afterward on a best-effort basis.
 
-**Solution**: Set `CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1` to skip the re-clone attempt and keep using the existing cache when the pull fails:
+The refresh runs in the background after startup, so it doesn't delay startup. Each session still repeats the failed attempt, and each git operation can wait out the [120-second timeout](#git-operations-time-out).
+
+**Solution**: Set `CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1` to skip the re-clone attempt and keep using the existing checkout when the check can't reach the remote:
 
 ```bash theme={null}
 export CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1
@@ -1481,9 +1512,9 @@ For fully offline deployments where the repository will never be reachable, use 
 
 ### Git operations time out
 
-**Symptoms**: Plugin installation or marketplace updates fail with a timeout error like "Git clone timed out after 120s" or "Git pull timed out after 120s".
+**Symptoms**: Plugin installation or marketplace updates fail with a timeout error such as `Git clone timed out after 120s`.
 
-**Cause**: Claude Code uses a 120-second timeout for all git operations, including cloning plugin repositories and pulling marketplace updates. Large repositories or slow network connections may exceed this limit.
+**Cause**: Claude Code uses a 120-second timeout for all git operations, including cloning plugin repositories and re-cloning a marketplace to update it. Large repositories or slow network connections may exceed this limit.
 
 **Solution**: Increase the timeout using the `CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS` environment variable. The value is in milliseconds:
 

@@ -320,22 +320,24 @@ Claude Code consults exactly one of the two lists for each server, so neither li
 
 Claude Code connects to MCP servers through one of two client runtimes. The v1 runtime is built on MCP TypeScript SDK 1.x. The v2 runtime is the same code on [MCP TypeScript SDK 2.0](https://ts.sdk.modelcontextprotocol.io/v2/), which adds MCP protocol revision 2026-07-28. The rest of this page applies to both runtimes, except where a section names the v2 runtime.
 
-On Claude Code v2.1.232 or later, Claude Code uses the v2 runtime. It picks a runtime each time you start it and keeps it until you exit. It uses v1 when you run it:
+Claude Code picks a runtime each time you start it and keeps it until you exit. In sessions where it [fetches feature flags](/docs/en/env-vars#features-that-need-feature-flag-fetching), it uses the v2 runtime on Claude Code v2.1.232 or later.
 
-* On Amazon Bedrock, Claude Platform on AWS, Google Cloud's Agent Platform, or Microsoft Foundry, unless a host platform that embeds Claude Code sets [`CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST`](/docs/en/env-vars)
-* Signed in through a [Claude apps gateway](/docs/en/claude-apps-gateway)
-* With [feature-flag fetching off](/docs/en/env-vars#features-that-need-feature-flag-fetching)
+In the sessions where it doesn't fetch feature flags, Claude Code uses the v2 runtime by default on Claude Code v2.1.274 or later:
+
+* Sessions on Amazon Bedrock, Claude Platform on AWS, Google Cloud's Agent Platform, or Microsoft Foundry, unless a host platform that embeds Claude Code sets [`CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST`](/docs/en/env-vars)
+* Sessions signed in through a [Claude apps gateway](/docs/en/claude-apps-gateway)
+* Sessions where you turn off telemetry or feature-flag fetching, for example with `DISABLE_TELEMETRY`
 
 On v2, Claude Code also:
 
-* Asks HTTP and claude.ai connector servers whether they support the newer revision, and uses it with those that do. It asks stdio servers only if you set [`MCP_PROTOCOL_NEGOTIATION`](/docs/en/env-vars) to `auto`, and connects to every other server as v1 does.
+* Asks HTTP servers whether they support the newer revision, and uses it with those that do. It also asks claude.ai connector servers in sessions where it fetches feature flags. To have it ask stdio servers, or connector servers in every session, set [`MCP_PROTOCOL_NEGOTIATION`](/docs/en/env-vars) to `auto`. It connects to every other server as v1 does.
 * Receives `list_changed` notifications from servers on the newer revision over a [stream it holds open](#notification-streams-on-the-v2-runtime).
 * Doesn't register a [channel](#push-messages-with-channels) server that connects on the newer revision, because that revision can't carry channel messages.
 * Fails an [MCP OAuth sign-in](#authenticate-with-remote-mcp-servers) whose authorization response names an unexpected issuer.
 
 Anthropic can keep a specific server on the earlier protocol, or off that stream, with a feature flag Claude Code fetches.
 
-To pick the runtime yourself, set [`MCP_SDK_GENERATION`](/docs/en/env-vars) to `v1` or `v2`. To decide whether Claude Code asks, set [`MCP_PROTOCOL_NEGOTIATION`](/docs/en/env-vars) to `auto` or `legacy`. Where Claude Code uses v1 by default, pinning `v2` doesn't make it ask, so set `auto` too.
+To pick the runtime yourself, set [`MCP_SDK_GENERATION`](/docs/en/env-vars) to `v1` or `v2`. To decide whether Claude Code asks, set [`MCP_PROTOCOL_NEGOTIATION`](/docs/en/env-vars) to `auto` or `legacy`.
 
 ### Dynamic tool updates
 
@@ -360,7 +362,7 @@ Claude Code reconnects a remote server that drops mid-session and retries an HTT
 
 Claude Code reconnects a dropped remote server with exponential backoff: up to five attempts, starting at a one-second delay and doubling it each time. What you see depends on how you're running Claude Code:
 
-* **In an interactive session**: `/mcp` shows the server as pending while Claude Code reconnects. After five failed attempts, Claude Code marks the server as failed, or as needing authentication when the server needs authorizing again. You can retry manually from `/mcp`.
+* **In an interactive session**: `/mcp` shows the server as pending while Claude Code reconnects. After five failed attempts, Claude Code marks the server as failed, or as needing authentication when the server needs authorizing again. When it marks the server as failed, you see an `MCP server "<name>" disconnected · open /mcp to reconnect` notification. You can retry manually from `/mcp`.
 * **In [`claude -p`](/docs/en/headless) runs and [Agent SDK](/docs/en/agent-sdk/overview) sessions**: Claude Code reconnects on the same schedule, with no `/mcp` panel to show the attempts.
 
 #### Failed first connections
@@ -927,7 +929,9 @@ As of v2.1.196, when `oauth.scopes` isn't set, Claude Code requests the scope pr
 
 If the authorization server advertises `offline_access` in `scopes_supported`, Claude Code appends it to the pinned scopes so the access token can be refreshed without a new browser sign-in.
 
-If the server later returns a 403 `insufficient_scope` for a tool call, Claude Code re-authenticates with the same pinned scopes. Widen `oauth.scopes` when a tool you need requires a scope outside the pinned set.
+If the server later returns a 403 `insufficient_scope` for a tool call, the call fails with a [`needs additional permissions`](/docs/en/errors#mcp-server-needs-you-to-sign-in-again) message that names the scope the server asks for. The server shows as needing authentication in `/mcp`.
+
+If that scope isn't in your pinned `oauth.scopes`, add it, then run `/mcp` and authenticate the server again. Claude Code requests the pinned scopes rather than the scope the server named, so if you authenticate again without adding it, the token you get still lacks it.
 
 ### Use dynamic headers for custom authentication
 

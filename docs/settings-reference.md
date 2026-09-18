@@ -1555,7 +1555,7 @@ Claude Code also writes `true` here when you choose to block such reads on [auto
 }
 ```
 
-If only a repository's checked-in settings file adds a directory, the block still applies to reads there. Files Claude Code itself needs stay readable, such as your skills, plugins, rules, agents, commands, and the `CLAUDE.md` memory file under `~/.claude/`.
+If only a repository's checked-in settings file adds a directory, the block still applies to reads there. When [`autoMemoryDirectory`](#automemorydirectory) comes from the project's `.claude/settings.json`, or from a `.claude/settings.local.json` [treated as repository-supplied](/docs/en/permissions#when-your-local-settings-file-needs-trust), Claude Code loads no [auto memory](/docs/en/memory#storage-location) from that directory and saves none to it. Files Claude Code itself needs stay readable, such as your skills, plugins, rules, agents, commands, and the `CLAUDE.md` memory file under `~/.claude/`.
 
 When the [sandbox](/docs/en/sandboxing) is on, the block also denies sandboxed commands read access to home directories and mounted-volume roots outside the working directories. A retry that needs approval to [run outside the sandbox](/docs/en/sandboxing#the-unsandboxed-retry-escape-hatch) prompts you even in `bypassPermissions` mode. Files a tool reads from your home directory, such as `~/.gitconfig`, are denied with the rest; re-open a specific path with [`sandbox.filesystem.allowRead`](#sandbox-filesystem-allowread) when a tool needs it.
 
@@ -2931,7 +2931,7 @@ Appears in `/config` as **Auto-scroll** when fullscreen rendering is on, which w
 
 ### `axScreenReader`
 
-Render screen-reader friendly output: flat text without decorative borders or animations. Screen-reader mode uses the classic renderer, so the `tui` setting has no effect while it is active; attached [background sessions](/docs/en/agent-view) still render fullscreen. Requires Claude Code v2.1.181 or later.
+Render screen-reader friendly output: flat text without decorative borders or animations. Screen-reader mode uses the classic renderer, so the `tui` setting has no effect while it is active; attached [background sessions](/docs/en/agent-view) still render fullscreen.
 
 * **Scope**: [`Any file`](#scopes)
 * **Type**: Boolean
@@ -2945,8 +2945,6 @@ Render screen-reader friendly output: flat text without decorative borders or an
   "axScreenReader": true
 }
 ```
-
-Requires Claude Code v2.1.181 or later.
 
 ### `bashEditDiffEnabled`
 
@@ -4530,7 +4528,9 @@ The `source` object takes one of these forms:
 
 The `git` source type works with any git hosting service, including self-hosted GitLab and Bitbucket. Claude Code clones the repository with the same authentication that `git clone` would use on that machine: configured credential helpers or SSH keys. A provider token such as `GITHUB_TOKEN` takes effect only through a credential helper that reads it. See [Private repositories](/docs/en/plugin-marketplaces#private-repositories) for setup details.
 
-For `github` and `git` sources, set `"skipLfs": true` inside the `source` object, alongside `repo` or `url`, to skip Git LFS downloads when Claude Code clones or updates the marketplace repository. LFS pointer files remain as pointers instead of downloading their content. Use this when the repository contains large LFS objects unrelated to plugin content.
+For `github` and `git` sources, Claude Code never downloads [Git LFS](https://git-lfs.com) content when it clones the marketplace repository to add or update it. LFS-tracked files are checked out as pointer files, and the add or update output reports how many.
+
+The `skipLfs` field inside the `source` object is accepted and has no effect. Before v2.1.274, Claude Code downloaded LFS content unless you set `"skipLfs": true`.
 
 For a `url` source, set `headersHelper` inside the `source` object when the credential in `headers` expires and a command has to produce a fresh one. Requires Claude Code v2.1.238 or later. For what the command must print and where Claude Code runs it, see [Write the headersHelper command](/docs/en/plugin-marketplaces#write-the-headershelper-command), and for the cases where Claude Code doesn't run it, see [When Claude Code skips a headersHelper command](/docs/en/plugin-marketplaces#when-claude-code-skips-a-headershelper-command-or-drops-its-output). Once you set `headersHelper` on an `https://` marketplace URL, Claude Code runs the command at two points, reusing one run's output for up to 60 seconds:
 
@@ -4678,7 +4678,7 @@ Users can still add MCP servers of their own; only servers that match the manage
 Block specific MCP servers. Claude Code refuses to load a matching server wherever it's defined, including plugin servers, servers passed with `--mcp-config`, servers from `managed-mcp.json`, servers from [`managedMcpServers`](#managedmcpservers), and the claude.ai connectors [it fetches itself](/docs/en/mcp#how-connectors-reach-claude-code). In-process `type: "sdk"` servers are exempt; the app that started the session registers them.
 
 * **Scope**: [`Any file`](#scopes). Entries from every file merge into one denylist, and [`allowManagedMcpServersOnly`](#allowmanagedmcpserversonly) doesn't change that. Deploy it in managed settings to enforce it.
-* **Type**: array of objects, each with exactly one key: `serverName`, any non-empty string, so a claude.ai connector's display name such as `"claude.ai Slack"` works; `serverCommand`, an array of the command and its arguments matched exactly; or `serverUrl`, a URL pattern with `*` wildcards
+* **Type**: array of objects, each with exactly one key: `serverName`, a string, so a claude.ai connector's display name such as `"claude.ai Slack"` works; `serverCommand`, an array of the command and its arguments matched exactly; or `serverUrl`, a URL pattern with `*` wildcards
 * **Default**: unset, so no server is blocked; an empty array also blocks nothing
 
 ```json settings.json theme={null}
