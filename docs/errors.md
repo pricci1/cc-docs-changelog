@@ -71,6 +71,8 @@ Match the message you see to a section below.
 | `Remote Control stopped — the app running this session is now signed in to a different Claude account` | [Authentication](#remote-control-stopped-because-the-app-running-the-session-signed-out-or-switched-accounts) |
 | `Remote Control stopped — the app running this session is signed out of Claude` | [Authentication](#remote-control-stopped-because-the-app-running-the-session-signed-out-or-switched-accounts) |
 | `Couldn't verify your organization's policy for remote control` | [Troubleshoot Remote Control](/docs/en/remote-control#couldnt-verify-your-organizations-policy-for-remote-control) |
+| `Remote Control is disabled by your organization's policy` | [Troubleshoot Remote Control](/docs/en/remote-control#remote-control-is-disabled-by-your-organizations-policy) |
+| `Remote Control was turned off by your organization's policy` | [Troubleshoot Remote Control](/docs/en/remote-control#remote-control-was-turned-off-by-your-organizations-policy) |
 | `OAuth token revoked` / `OAuth token has expired` | [Authentication](#oauth-token-revoked-or-expired) |
 | `API Error: 401 Invalid authentication credentials` | [Authentication](#api-error-401-invalid-authentication-credentials) |
 | `Login expired · Please run /login` | [Authentication](#login-expired) |
@@ -182,6 +184,7 @@ Match the message you see to a section below.
 | `The connection dropped while downloading the update` | [Installation errors](#the-connection-dropped-while-downloading-the-update) |
 | `Download timed out: exceeded the total deadline` | [Installation errors](#the-connection-dropped-while-downloading-the-update) |
 | `--bg and --print conflict` | [Command-line errors](#conflict-between-bg-and-print) |
+| `Error: Cannot use both --append-subagent-system-prompt and --append-subagent-system-prompt-file. Please use only one.` | [Command-line errors](#conflict-between-a-system-prompt-flag-and-its-file-form) |
 | `Cloud sessions cannot be created from a --restricted session` | [Command-line errors](#cloud-sessions-cannot-be-created-from-a-restricted-session) |
 | `Cloud sessions are disabled by your organization's policy` | [Command-line errors](#cloud-sessions-are-disabled-by-your-organizations-policy) |
 | `Couldn't verify your organization's policy for cloud sessions` | [Command-line errors](#cloud-sessions-are-disabled-by-your-organizations-policy) |
@@ -242,10 +245,13 @@ Match the message you see to a section below.
 | `Marketplace name impersonates an official Anthropic/Claude marketplace` | [Plugin errors](#claude-code-refuses-the-marketplace-name) |
 | `Marketplace "<name>" is already added from a different source` | [Plugin errors](#marketplace-is-already-added-from-a-different-source) |
 | `"<name>" is another spelling of "<reserved>", a reserved marketplace name` | [Plugin errors](#marketplace-name-is-another-spelling-of-a-reserved-name) |
+| `Marketplace "<name>" is added but ignored` | [Plugin troubleshooting](/docs/en/plugins/troubleshooting#marketplace-is-added-but-ignored) |
+| `Marketplace "<name>" is registered but was refused (see the debug log)` | [Plugin troubleshooting](/docs/en/plugins/troubleshooting#marketplace-is-added-but-ignored) |
 | `references ${user_config.*} in a shell-form command` | [Plugin errors](#plugin-command-references-user-config) |
 | `Monitor "<name>" from plugin <plugin> references ${user_config.*} in its command` | [Plugin errors](#plugin-command-references-user-config) |
 | `headersHelper for MCP server '<name>' references ${user_config.*}` | [Plugin errors](#plugin-command-references-user-config) |
 | `Plugin archive integrity check failed` | [Plugin errors](#plugin-archive-integrity-check-failed) |
+| `An npm plugin source must name a registry package` | [Plugin troubleshooting](/docs/en/plugins/troubleshooting#an-npm-plugin-source-must-name-a-registry-package) |
 | `path escapes plugin directory` | [Plugin errors](#path-escapes-plugin-directory) |
 | `path could not be checked` | [Plugin errors](#path-could-not-be-checked) |
 | `its marketplace entry path does not stay inside the marketplace directory` | [Plugin errors](#marketplace-entry-path-does-not-stay-inside-the-marketplace-directory) |
@@ -286,6 +292,9 @@ Match the message you see to a section below.
 | `Reading a local file from outside this session's connected folders, or through a link, needs the approval card` | [Tool errors](#reading-a-local-file-from-outside-the-connected-folders) |
 | `cannot read file_path (...) — the file could not be examined, and no one can answer the approval card` | [Tool errors](#reading-a-local-file-from-outside-the-connected-folders) |
 | `WebFetch cannot fetch localhost or other hostnames without a dot` | [Tool errors](#webfetch-cannot-fetch-localhost) |
+| `The safety check for domain ... is rate-limited` | [Tool errors](#webfetch-domain-safety-check-failed) |
+| `The safety check for domain ... is temporarily rate-limited` | [Tool errors](#webfetch-domain-safety-check-failed) |
+| `Unable to verify if domain ... is safe to fetch` | [Tool errors](#webfetch-domain-safety-check-failed) |
 | `Can't open MCP settings while no terminal is attached to this background session` | [Background session errors](#commands-refused-in-a-background-session) |
 | `Can't open MCP settings in a background session` | [Background session errors](#commands-refused-in-a-background-session) |
 | `blocked because the path is spelled in a form that cannot be safely resolved` | [Background session errors](#write-or-command-blocked-because-the-path-cannot-be-safely-resolved) |
@@ -318,7 +327,7 @@ Match the message you see to a section below.
 | `Transcript writes are failing (...)` | [Session saving warnings](#transcript-writes-are-failing) |
 | `Transcript saving is off — CLAUDE_CODE_SKIP_PROMPT_HISTORY is set` | [Session saving warnings](#transcript-saving-is-off-skip-prompt-history) |
 | `Transcript saving is off — inherited CLAUDE_CODE_CHILD_SESSION marker` | [Session saving warnings](#transcript-saving-is-off-child-session-marker) |
-| `Claude Code's fullscreen renderer didn't finish starting last time on this machine` / `Claude Code's fullscreen renderer has repeatedly failed to start on this machine` | [Configuration warnings](#fullscreen-failed-start-notice) |
+| `Claude Code's fullscreen renderer didn't finish starting last time on this machine` / `Claude Code's fullscreen renderer has repeatedly failed to start on this machine` | [Fullscreen rendering](/docs/en/fullscreen#fullscreen-renderer-didnt-finish-starting) |
 | `Claude Code exited after an unrecoverable interface error (...)` | [Configuration warnings](#exited-after-an-unrecoverable-interface-error) |
 | `Agent descriptions are over the 15.0k-token limit` | [Configuration warnings](#agent-descriptions-are-over-the-15000-token-limit) |
 | `Not loaded: rename <path>, then restart — its name uses "<name>", a name reserved for the skills synced from your claude.ai account` | [Configuration warnings](#a-skill-command-or-workflow-wasnt-loaded-because-its-name-is-reserved) |
@@ -850,6 +859,10 @@ Not logged in · Please run /login
 
 In a session the Claude Desktop app runs, such as the Code tab or Cowork, the message reads `Authentication required · Sign in again to continue`, and you sign in again from the app.
 
+If you sign in with your claude.ai account in another Claude Code window that uses the same [configuration directory](/docs/en/claude-directory), an interactive session showing this message starts using that login on its own. You don't need to restart it.
+
+Before v2.1.286 on macOS, the session could keep showing the message after you signed in from another window. On those versions, restart the session that shows the message.
+
 **What to do:**
 
 * Run `/login` to authenticate with your Claude subscription or Console account
@@ -1191,6 +1204,7 @@ You can check for this state before a request fails: [`/status`](/docs/en/comman
 **What to do:**
 
 * Run `/login` to sign in again. Retrying without signing in shows the same message on every request.
+* If you sign in with your claude.ai account in another Claude Code window, see [Not logged in](#not-logged-in) for when this session starts using that login on its own.
 * In non-interactive mode, run `claude` in the same environment, complete `/login`, then rerun your command. For automation that can't sign in interactively, authenticate with `ANTHROPIC_API_KEY` or [generate a long-lived token with `claude setup-token`](/docs/en/authentication#generate-a-long-lived-token).
 * If signing in keeps failing, see [Login and authentication](/docs/en/troubleshoot-install#login-and-authentication)
 
@@ -1851,8 +1865,8 @@ This is not a client-side network problem. Cloud sessions and [routines](/docs/e
 
 These steps change one of your own environments. An [organization-shared environment](/docs/en/cloud-environments#organization-shared-environments) opens read-only in the selector, so ask an Owner to change its network access from the **Cloud environments** page in [admin settings](https://claude.ai/admin-settings).
 
-* Open the routine for editing, or start a cloud session. Select the cloud icon showing your environment's name, such as **Default**, to open the selector. Hover over your environment and click the settings icon.
-* In the **Update cloud environment** dialog, change **Network access** from **Trusted** to **Custom**, then add the blocked domain to **Allowed domains**. Enter one domain per line. Check **Also include default list of common package managers** to keep the [default allowlist](/docs/en/cloud-environments#default-allowed-domains) alongside your custom domains. Select **Full** instead if you want unrestricted access.
+* Open your environment for editing, either from the [routine's form](/docs/en/routines#environments-and-network-access) or from the [environment selector](/docs/en/cloud-environments#configure-your-environment) where you start cloud sessions.
+* In the **Edit cloud environment** dialog, change **Network access** from **Trusted** to **Custom**, then add the blocked domain to **Allowed domains**. Enter one domain per line. Check **Also include default list of common package managers** to keep the [default allowlist](/docs/en/cloud-environments#default-allowed-domains) alongside your custom domains. Select **Full** instead if you want unrestricted access.
 * Click **Save changes**. The next run uses the updated allowlist. For a cloud session that's already open, see [when a network access change reaches existing sessions](/docs/en/cloud-environments#network-access).
 
 See [Network access](/docs/en/cloud-environments#network-access) for access levels and the default allowlist. Local CLI sessions are not affected by this policy.
@@ -2690,6 +2704,22 @@ This message requires Claude Code v2.1.198 or later. You combined `--bg` with `-
 * Drop `-p` or `--print`. `--bg` takes the prompt as its positional argument, so `claude --bg "<task>"` is the complete command. See [Dispatch new agents from your shell](/docs/en/agent-view#from-your-shell).
 * To run the prompt non-interactively and print the result instead of creating a background session, drop `--bg` and run `claude -p "<task>"`
 
+<h3 id="conflict-between-a-system-prompt-flag-and-its-file-form">
+  Conflict between a system prompt flag and its file form
+</h3>
+
+You passed [`--append-subagent-system-prompt`](/docs/en/cli-reference#cli-flags) together with `--append-subagent-system-prompt-file` in one `claude` invocation, so `claude` exits with code 1 instead of starting the session:
+
+```text theme={null}
+Error: Cannot use both --append-subagent-system-prompt and --append-subagent-system-prompt-file. Please use only one.
+```
+
+Before v2.1.283, `claude` exited the same way when you passed `--system-prompt` with `--system-prompt-file`, or `--append-system-prompt` with `--append-system-prompt-file`, because those pairs conflicted instead of [combining](/docs/en/cli-reference#system-prompt-flags). On those versions the message names the pair you combined.
+
+**What to do:**
+
+* Keep one form of the flag and drop the other. To combine a fixed prompt file with per-run text, merge the text into the file before launching instead of passing both flags
+
 <h3 id="invalid-agents-configuration">
   Invalid `--agents` configuration
 </h3>
@@ -3020,8 +3050,6 @@ You started a sign-in for an MCP server whose URL points at an Anthropic-hosted 
 ```text theme={null}
 "gmail" is Anthropic-hosted and doesn't support local OAuth. Connect it via Settings → Connectors on claude.ai (requires `claude login`), then it'll be available here automatically.
 ```
-
-Claude Code matches these hosts by URL, so the message appears when a server you added with `claude mcp add` or in `.mcp.json` points at one of them.
 
 **What to do:**
 
@@ -3702,7 +3730,7 @@ On macOS and Linux, Claude Code also rejects a component path that contains a ba
 commands path escapes plugin directory: ./commands\deploy.md — its path contains a backslash, which is not resolved reliably on this platform
 ```
 
-Before v2.1.251, Claude Code loaded a `commands` path declared in a marketplace entry even when it pointed outside the plugin directory. Claude Code already rejected paths declared in `plugin.json` and the other component paths in a marketplace entry.
+Before v2.1.251, Claude Code loaded a `commands` path declared in a marketplace entry even when it pointed outside the plugin directory.
 
 Before v2.1.257, the check looked only at the path's spelling, not at where a symlink leads.
 
@@ -3773,10 +3801,8 @@ Plugin source path refused: ./my-plugin does not stay inside its marketplace dir
 
 Claude Code keeps the plugin marketplaces you've added in a registry file at `~/.claude/plugins/known_marketplaces.json`. A plugin command that needs the registry, such as `claude plugin install`, fails with one of two messages when Claude Code can't use the file:
 
-* `Failed to load marketplace configuration`: the file isn't valid JSON, or can't be read. An empty file fails this way too.
+* `Failed to load marketplace configuration`: the file exists but isn't valid JSON or can't be read. An empty file fails this way too.
 * `Marketplace configuration file is corrupted`: the file is valid JSON but its contents don't match the registry schema.
-
-A missing file isn't a failure: Claude Code treats it as a registry with no marketplaces.
 
 With an empty file, `claude plugin install` reports:
 
@@ -4207,6 +4233,24 @@ WebFetch cannot fetch localhost or other hostnames without a dot. To reach a loc
 
 Before v2.1.268, WebFetch reported these URLs with a generic `Invalid URL` error.
 
+<h3 id="webfetch-domain-safety-check-failed">
+  WebFetch domain safety check failed
+</h3>
+
+Before fetching a URL, WebFetch sends the URL's hostname to `api.anthropic.com` to check it against Anthropic's [domain safety blocklist](/docs/en/data-usage#webfetch-domain-safety-check). If the check can't complete, WebFetch can't confirm that the domain is safe, so it doesn't fetch the page and the tool result carries one of these messages instead:
+
+```text wrap theme={null}
+The safety check for domain example.com is rate-limited (too many domain checks from this network; the limit is shared and can stay exhausted for minutes). Do not retry WebFetch in a loop or sleep to wait it out; continue without this page and report that its safety check was rate-limited. A single later attempt is fine; if that is rate-limited too, stop.
+
+Unable to verify if domain example.com is safe to fetch. This may be due to network restrictions or enterprise security policies blocking claude.ai.
+```
+
+* `rate-limited`: the check endpoint answered with HTTP `429`. The message tells Claude to continue without the page and to try again at most once later. Claude Code doesn't cache a failed check, so a later fetch of that domain runs the check again. If sessions on your network hit this often, you can skip the check with [`skipWebFetchPreflight: true`](/docs/en/settings-reference#skipwebfetchpreflight) in settings.
+* `Unable to verify`: the check request failed, timed out, or got another error status. If your network blocks `api.anthropic.com`, allowlist that domain, or skip the check with [`skipWebFetchPreflight: true`](/docs/en/settings-reference#skipwebfetchpreflight) in settings.
+
+Before v2.1.286, the rate-limited message read `The safety check for domain example.com is temporarily rate-limited (too many domain checks from this network). Retry after about a minute; retrying sooner will fail the same way.`.
+Before v2.1.285, a rate-limited check was reported with the `Unable to verify` message instead.
+
 ## Background session errors
 
 [Background sessions](/docs/en/agent-view) run without an interactive terminal of their own, so commands that need one behave differently there. These messages appear in the transcript of a background session, in the terminal that attaches to one, in the session or shell you dispatch from, or, for the [worktree-guard entries](#write-or-command-blocked-because-the-path-cannot-be-safely-resolved) below, in any session isolated in a worktree or running a worktree-isolated subagent; where a message is specific to one surface, its entry says so.
@@ -4370,8 +4414,6 @@ On Linux and WSL, the background service checks each host process every few seco
 ```text theme={null}
 terminal host process died — press Enter to restart
 ```
-
-If you open the row before the check runs, the footer shows `This session's terminal host process died (the conversation is saved) — press Enter to restart it` and the row turns failed.
 
 From the shell, `claude attach <id>` restarts a session already marked failed for a dead host, and otherwise prints the cause and exits:
 
@@ -4567,6 +4609,8 @@ Two variants name a different cause:
 * **`The home directory is trusted one session at a time`**: the session's directory is your home directory. Claude Code never saves trust for the home directory, so accepting the dialog there in an earlier session doesn't count.
 * **`<path> could not be resolved on disk`**: Claude Code couldn't find the session's directory on disk.
 
+Before v2.1.286, on Windows, this message could also appear in a directory you had already trusted, if its trust record was saved with the path in a different letter case. Update to v2.1.286 or later.
+
 **What to do:**
 
 * Run `claude` in the directory the message names and accept the trust dialog, then run the command again
@@ -4741,25 +4785,6 @@ Inside tmux, Claude Code detects a marker that arrived through the tmux server's
 ## Configuration warnings
 
 Claude Code writes most of these messages to stderr, not into the conversation, and writes most of them at startup. An entry says so when its message appears somewhere else, such as in the debug log or as a startup notice in the conversation view, or at another time, such as the [unrecognized-model diagnostic line](#unrecognized-model-id-on-a-request) at request time.
-
-<h3 id="fullscreen-failed-start-notice">
-  Fullscreen renderer didn't finish starting
-</h3>
-
-A previous [fullscreen](/docs/en/fullscreen) session on this machine exited before it finished starting, so Claude Code starts this session on the classic renderer and prints one of these notices:
-
-```text theme={null}
-Claude Code's fullscreen renderer didn't finish starting last time on this machine, so this launch is using the classic renderer. It will try fullscreen again next launch; /tui default keeps the classic renderer.
-
-Claude Code's fullscreen renderer has repeatedly failed to start on this machine, so it has been turned off here. Run /tui fullscreen to try it again (this also resets after an update).
-```
-
-**What to do:**
-
-* Follow [Fullscreen rendering](/docs/en/fullscreen#fullscreen-renderer-didnt-finish-starting). It says which notice you get, what Claude Code does in later sessions, and how to try fullscreen again or keep the classic renderer.
-* If the session that died printed an exit message, see [Claude Code exited after an unrecoverable interface error](#exited-after-an-unrecoverable-interface-error) for what it names.
-
-Before v2.1.236, Claude Code printed no notice and kept starting sessions in fullscreen rendering after a failed start.
 
 <h3 id="exited-after-an-unrecoverable-interface-error">
   Claude Code exited after an unrecoverable interface error
@@ -5100,8 +5125,6 @@ Permission allow rule (.claude/settings.json): Bash(git -C * status *) has a wil
 * Move every `*` after the subcommand: `Bash(git status *)` in place of `Bash(git -C * status *)`. Write one rule per subcommand you want to allow.
 * Fix the rule at the source the warning names in parentheses: a settings file path, or the `--allowed-tools` flag itself. A `claude-settings-<hash>.json` path that doesn't exist on disk stands for an inline `--settings` value. Fix the JSON you pass to that flag.
 * If the source reads `managed policy settings`, forward the warning to whoever maintains your managed settings, since you can't clear it yourself.
-
-Claude Code doesn't warn about deny and ask rules with the same shape: it refuses or prompts for the extra commands they match rather than approving them. It also doesn't warn about rules whose subcommand comes before the first `*`, such as `Bash(git commit *)`, or rules in which no word other than an option follows the `*`, such as `Bash(git *)`, or about `:*` prefix rules such as `Bash(git:*)`.
 
 In a [background session](/docs/en/agent-view) or with `--output-format json` or `stream-json`, Claude Code writes the warning to the debug log instead of stderr, so machine-read output stays clean. Run with `--debug` to capture it at `~/.claude/debug/<session-id>.txt`. Before v2.1.246, Claude Code accepted these rules without a warning.
 

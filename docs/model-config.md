@@ -33,7 +33,7 @@ Use a model alias to select model settings without remembering exact version num
 | **`sonnet`** | Uses the latest Sonnet model for daily coding tasks |
 | **`opus`** | Uses the latest Opus model for complex reasoning tasks |
 | **`haiku`** | Uses the fast and efficient Haiku model for simple tasks |
-| **`sonnet[1m]`** | Uses Sonnet with a [1 million token context window](https://platform.claude.com/docs/en/build-with-claude/context-windows#context-window-sizes-by-model) for long sessions. No effect when `sonnet` already resolves to Sonnet 5.5 or Sonnet 5 with their native 1M window; behind an [LLM gateway](/docs/en/llm-gateway), selects the 1M window for that model |
+| **`sonnet[1m]`** | Uses Sonnet with a [1 million token context window](https://platform.claude.com/docs/en/build-with-claude/context-windows#context-window-sizes-by-model) for long sessions. No effect when `sonnet` already resolves to Sonnet 5.5 or Sonnet 5 with their native 1M window |
 | **`opus[1m]`** | Uses Opus with a [1 million token context window](https://platform.claude.com/docs/en/build-with-claude/context-windows#context-window-sizes-by-model) for long sessions |
 | **`opusplan`** | Special mode that uses `opus` during plan mode, then switches to `sonnet` for execution |
 
@@ -262,7 +262,7 @@ Model changes that Claude Code makes on your behalf are checked the same way:
 * **[Fallback model chains](#fallback-model-chains)**: entries outside the allowlist are dropped
 * **Plan-mode upgrades**: on the Anthropic API and Claude Platform on AWS, an upgrade such as [`opusplan`](#opusplan-model-setting) to an excluded model uses the newest permitted version of the upgrade family. On providers with provider-specific model IDs, and when no version is permitted, the upgrade is skipped and planning continues on the session's model
 * **[Automatic model fallback](#automatic-model-fallback)**: a fallback whose target is excluded does not run, so the flagged request ends with a refusal instead
-* **[Auto mode classifier](/docs/en/permission-modes#eliminate-prompts-with-auto-mode)**: the classifier's Claude Sonnet 5 default applies only when the allowlist permits Sonnet 5. When it's excluded, the classifier runs on the session's model, which the allowlist already governs, or on an Opus model when the session runs on a [Fable model](#work-with-fable). On providers other than the Anthropic API, that Opus fallback runs on the provider's default Opus model without consulting the allowlist. Requires Claude Code v2.1.210 or later
+* **[Auto mode classifier](/docs/en/permission-modes#eliminate-prompts-with-auto-mode)**: the classifier's Claude Sonnet 5 default applies only when the allowlist permits Sonnet 5. When it's excluded, the classifier runs on the session's model, which the allowlist already governs, or on an Opus model when the session runs on a [Fable model](#work-with-fable). On providers other than the Anthropic API, that Opus fallback runs on the model you set in `ANTHROPIC_DEFAULT_OPUS_MODEL` or otherwise on Opus 5, without consulting the allowlist. Requires Claude Code v2.1.210 or later
 * **[Fast mode](/docs/en/fast-mode)**: enabling fast mode is refused when the model the session would run on afterward is outside the allowlist
 
 ```json theme={null}
@@ -522,6 +522,18 @@ Category-based fallback requires Claude Code v2.1.219 or later. Before v2.1.219,
 
 The fallback model is checked against [`availableModels`](#restrict-model-selection). When it is blocked, no fallback occurs. The refusal is shown as a normal error and the session's model is unchanged.
 
+#### Effort level after a fallback
+
+When Claude Code switches your session to the fallback model, it keeps the effort level the flagged request ran at in place of that model's default effort. For example, a session on Opus 5.5 at its default `medium` that falls back to Opus 4.8 stays at `medium`, although Opus 4.8 defaults to `high`.
+
+A different level applies in cases such as these:
+
+* **Settings or organization default**: a level in your settings that applies to the fallback model, or a default effort your organization set for it, applies instead.
+* **Your own change**: once you choose an effort level, pick a model in `/model`, or resume the session later, the flagged request's level no longer carries over.
+* **Skill effort**: a level that a skill's `effort` frontmatter set for the flagged request applies to that turn, and later turns run at the level the [effort resolution order](#adjust-effort-level) gives the fallback model.
+
+The session header shows the level in effect next to the model name. To change it, run `/effort` in the session.
+
 #### Check what triggered fallback
 
 Fallback can trigger on the first request of a session, before you send anything unusual, because the first request carries workspace context such as your CLAUDE.md content and git status. A repository that contains security or biology material can trip the classifier on that context alone.
@@ -578,7 +590,7 @@ Claude Code resolves the session's effort level in this order, taking the first 
 
 1. An explicit choice: the [`CLAUDE_CODE_EFFORT_LEVEL`](/docs/en/env-vars#variables) environment variable, launching with `--effort`, or `/effort` in the session ([a non-interactive `/effort` has narrower effect](#non-interactive-effort))
 2. Your settings: the level you saved for the model or an [`effortLevel`](/docs/en/settings-reference#effortlevel) key, with the precedence between them and across settings files stated at [`modelSettings`](/docs/en/settings-reference#modelsettings)
-3. The model's default effort: `high` on every model that supports effort, except that Opus 5.5 and Sonnet 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`, and, when your organization sets a default effort level for its [organization default model](#organization-default-model), that level is the default when you run that model
+3. The model's default effort: `high` on every model that supports effort, except that Opus 5.5 and Sonnet 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`, and, when your organization sets a default effort level for its [organization default model](#organization-default-model), that level is the default when you run that model. After an automatic model fallback, see [Effort level after a fallback](#effort-level-after-a-fallback) for the level that applies.
 
 Opus 5.5 starts at `medium` unless one of the sources above sets a level for it, and a top-level `effortLevel` in your user settings file doesn't count for Opus 5.5. That key is the older form `/effort` wrote before Claude Code saved levels per model: it keeps applying where it applied before, on Opus 5, Fable 5.1, and earlier models, while Opus 5.5 and models released after it start at their own default until you choose a level for them with `/effort` or the `/model` picker. A top-level `effortLevel` in project, local, or managed settings, or one passed with `--settings`, applies to every model.
 
@@ -705,6 +717,10 @@ Opus 4.6 and Sonnet 4.6 reach 1M only through their `[1m]` variant, and access t
 
 Claude Code checks these plan requirements only when it connects to the Anthropic API directly. If you point `ANTHROPIC_BASE_URL` at an [LLM gateway](/docs/en/llm-gateway#subscriptions-and-gateways) and your saved claude.ai login stays the active credential, Claude Code doesn't check your plan's usage credits. The `[1m]` options stay available in `/model`, and the gateway decides whether the request succeeds. Before v2.1.229, Claude Code rejected `/model sonnet[1m]` in that configuration when it couldn't confirm usage credits on the account.
 
+<span id="context-window-behind-a-gateway" />
+
+If you set `ANTHROPIC_BASE_URL` to an [LLM gateway](/docs/en/llm-gateway) or another proxy, Claude Code gives each model it recognizes the same context window the model has on the Anthropic API. Fable 5.1, Fable 5, Sonnet 5 and later, and Opus 4.7 and later get the 1M window with no `[1m]` variant to select, and a model that reaches 1M only through its `[1m]` variant, such as Opus 4.6, runs at 200K without it. Claude Code can't detect a lower limit that the gateway or the server behind it enforces. If your gateway rejects requests above 200K tokens, run [`/autocompact 200k`](#set-the-auto-compact-window) so sessions compact at that boundary.
+
 To turn off 1M context, set `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`. Claude Code removes 1M model variants from the model picker. On models with a native 1M window, such as Sonnet 5 and the Fable models, it also treats the model as having a 200K context window:
 
 * With auto-compaction on, sessions compact at the 200K boundary through [auto-compaction](#set-the-auto-compact-window). Setting the auto-compact window above 200K doesn't lift the hold, because Claude Code caps that window at the model's context window.
@@ -731,9 +747,10 @@ You can also use the `[1m]` suffix with model aliases or full model names:
 
 On the Anthropic API, Sonnet 5.5 and Sonnet 5 always run with the 1M context window. There is no 200K variant, no `[1m]` suffix to select, and no usage credits required on any plan. Sessions auto-compact before the window fills, at about 967K tokens by default; set [`CLAUDE_CODE_AUTO_COMPACT_WINDOW`](/docs/en/env-vars) to choose a different threshold.
 
-Two configurations budget the window at 200K instead:
+Claude Code gives Sonnet 5.5 and Sonnet 5 the same 1M window behind an [LLM gateway](/docs/en/llm-gateway) or another custom `ANTHROPIC_BASE_URL`. If your gateway enforces a lower limit, see [the context window behind a gateway](#context-window-behind-a-gateway).
 
-* **LLM gateway**: when `ANTHROPIC_BASE_URL` points at a [gateway](/docs/en/llm-gateway), Claude Code can't verify 1M support. To use the full window, select Sonnet 5.5 (1M context) in the model picker, which maps to `sonnet[1m]`, or run `/model claude-sonnet-5[1m]` for Sonnet 5.
+This setting budgets the window at 200K instead:
+
 * **`CLAUDE_CODE_DISABLE_1M_CONTEXT=1`**: holds sessions on every model with a native 1M window to a 200K window; see [Extended context](#extended-context) for how the hold is enforced. Useful for deployments that need to cap context.
 
 ## Context window and auto-compaction
@@ -763,7 +780,7 @@ If you don't set an auto-compact window, Claude Code compacts when the conversat
 * [Cloud sessions](/docs/en/claude-code-on-the-web) compact as the conversation approaches the model's limit
 * Sonnet 4.6 and Opus 4.6 without [extended context](#extended-context) compact at the 200K boundary, and so do Opus 4.8 and later when they run with a 200K context window, such as on Amazon Bedrock, Google Cloud's Agent Platform, and Microsoft Foundry
 * When you set [`CLAUDE_CODE_DISABLE_1M_CONTEXT=1`](/docs/en/env-vars), models with a native 1M window, such as Sonnet 5 and the Fable models, compact at the 200K boundary
-* Models running with a native 1M window, such as Sonnet 5, the Fable models, and Opus 4.7 and later on the Anthropic API, compact before the window fills, at about 967K tokens by default. On Amazon Bedrock, Google Cloud's Agent Platform, and Microsoft Foundry, [Pin models for third-party deployments](#pin-models-for-third-party-deployments) says which models run with that window; for the configurations that budget Sonnet 5.5 and Sonnet 5 at 200K instead, see [Sonnet 5.5 and Sonnet 5 context window](#sonnet-5-5-and-sonnet-5-context-window)
+* Models running with a native 1M window compact before the window fills, at about 967K tokens by default. On the Anthropic API, these include Sonnet 5, the Fable models, and Opus 4.7 and later. On Amazon Bedrock, Google Cloud's Agent Platform, and Microsoft Foundry, see [Pin models for third-party deployments](#pin-models-for-third-party-deployments) for which models run with that window. Behind a custom `ANTHROPIC_BASE_URL`, see [the context window behind a gateway](#context-window-behind-a-gateway)
 * Sessions on a model ID Claude Code doesn't recognize, such as an [LLM gateway](/docs/en/llm-gateway) alias, compact at the context window Claude Code assumes for the ID; see [Correct the window for a gateway or custom model ID](#correct-the-window-for-a-gateway-or-custom-model-id)
 
 ### Correct the window for a gateway or custom model ID

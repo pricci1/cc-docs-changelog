@@ -443,6 +443,7 @@ class ClaudeSDKClient:
     async def set_model(self, model: str | None = None) -> None
     async def rewind_files(self, user_message_id: str) -> None
     async def get_mcp_status(self) -> McpStatusResponse
+    async def get_context_usage(self) -> ContextUsageResponse
     async def reconnect_mcp_server(self, server_name: str) -> None
     async def toggle_mcp_server(self, server_name: str, enabled: bool) -> None
     async def stop_task(self, task_id: str) -> None
@@ -464,6 +465,7 @@ class ClaudeSDKClient:
 | `set_model(model)` | Change the model for the current session. Pass `None` to reset to [Claude Code's default model](/docs/en/model-config) |
 | `rewind_files(user_message_id)` | Restore files to their state at the specified user message. Requires `enable_file_checkpointing=True`. See [File checkpointing](/docs/en/agent-sdk/file-checkpointing) |
 | `get_mcp_status()` | Get the status of all configured MCP servers. Returns [`McpStatusResponse`](#mcpstatusresponse) |
+| `get_context_usage()` | Get a breakdown of context window usage by category, skill, and tool. The same data `/context` shows in an interactive session. Returns [`ContextUsageResponse`](#contextusageresponse). To compute the breakdown, Claude Code makes several token-counting API requests that don't appear in the message stream; see [how these requests are handled](#contextusageresponse) |
 | `reconnect_mcp_server(server_name)` | Retry connecting to an MCP server that failed or was disconnected |
 | `toggle_mcp_server(server_name, enabled)` | Enable or disable an MCP server mid-session. Disabling a stdio, SSE, or HTTP server removes its tools |
 | `stop_task(task_id)` | Stop a running background task. A [`TaskNotificationMessage`](#tasknotificationmessage) with status `"stopped"` follows in the message stream |
@@ -534,26 +536,23 @@ asyncio.run(main())
 
 #### Example - Streaming input with ClaudeSDKClient
 
+`query()` also accepts an async iterable of user message dicts, so you can assemble the prompt at send time or include content blocks such as images. Claude Code starts responding to the first yielded message as soon as it arrives, without waiting for the iterable to finish, and `receive_response()` stops at the `ResultMessage` that ends that response. Put everything Claude should read before answering into one message, as this generator does, and pair each `query()` call with its own `receive_response()` loop.
+
 ```python theme={null}
 import asyncio
 from claude_agent_sdk import ClaudeSDKClient
 
 
 async def message_stream():
-    """Generate messages dynamically."""
+    """Assemble the prompt at send time and yield it as one user message."""
+    readings = {"Temperature": "25°C", "Humidity": "60%"}
+    data = ", ".join(f"{name}: {value}" for name, value in readings.items())
     yield {
         "type": "user",
-        "message": {"role": "user", "content": "Analyze the following data:"},
-    }
-    await asyncio.sleep(0.5)
-    yield {
-        "type": "user",
-        "message": {"role": "user", "content": "Temperature: 25°C, Humidity: 60%"},
-    }
-    await asyncio.sleep(0.5)
-    yield {
-        "type": "user",
-        "message": {"role": "user", "content": "What patterns do you see?"},
+        "message": {
+            "role": "user",
+            "content": f"Analyze the following sensor data and describe any patterns you see: {data}",
+        },
     }
 
 
@@ -1349,7 +1348,7 @@ SdkBeta = Literal["context-1m-2025-08-07"]
 Use with the `betas` field in `ClaudeAgentOptions` to enable beta features.
 
 <Warning>
-  The `context-1m-2025-08-07` beta is retired as of April 30, 2026. Passing this header with Claude Sonnet 4.5 or Sonnet 4 has no effect, and requests that exceed the standard 200k-token context window return an error. To use a 1M-token context window, migrate to [Claude Opus 5.5, Claude Opus 5, Claude Sonnet 5, Claude Sonnet 4.6, Claude Opus 4.6, Claude Opus 4.7, or Claude Opus 4.8](https://platform.claude.com/docs/en/about-claude/models/overview), which include 1M context at standard pricing with no beta header required.
+  On the Claude API, the `context-1m-2025-08-07` beta is retired for Claude Sonnet 4.5 and Claude Sonnet 4. If you still pass it with either model, requests that exceed the standard 200K-token context window return an error, so remove it from `betas`. To run a session with a 1M-token context window, set `model` to a model that [runs with the 1M window by default](/docs/en/model-config#extended-context), such as `claude-sonnet-5-5` or `claude-opus-5-5`. For a model that reaches 1M only through its `[1m]` variant, append the suffix to the model ID, as in `claude-opus-4-6[1m]`.
 </Warning>
 
 ### `McpSdkServerConfig`
@@ -1450,6 +1449,37 @@ class McpServerStatus(TypedDict):
 | `config` | [`McpServerStatusConfig`](#mcpserverstatusconfig) (optional) | Server configuration. Same shape as [`McpServerConfig`](#mcpserverconfig) (stdio, SSE, HTTP, or SDK), plus a `claudeai-proxy` variant for servers connected through claude.ai |
 | `scope` | `str` (optional) | Configuration scope |
 | `tools` | `list` (optional) | Tools provided by this server, each with `name`, `description`, and `annotations` fields |
+
+### `ContextUsageResponse`
+
+Response from [`ClaudeSDKClient.get_context_usage()`](#methods). This is the same payload Claude Code renders for the `/context` command in an interactive session, so alongside the token counts it carries display fields such as `color` and `gridRows` that Claude Code uses to draw the `/context` usage grid.
+
+Claude Code builds this payload by sending several requests to the [token-counting](https://platform.claude.com/docs/en/build-with-claude/token-counting) API. These requests don't appear in the message stream, so cost tracking that reads the stream won't see them. On the Anthropic API, token counting isn't billed.
+
+```python theme={null}
+class ContextUsageResponse(TypedDict):
+    categories: list[ContextUsageCategory]
+    totalTokens: int
+    maxTokens: int
+    rawMaxTokens: int
+    percentage: float
+    model: str
+    isAutoCompactEnabled: bool
+    memoryFiles: list[dict[str, Any]]
+    mcpTools: list[dict[str, Any]]
+    agents: list[dict[str, Any]]
+    gridRows: list[list[dict[str, Any]]]
+    autoCompactThreshold: NotRequired[int]
+    deferredBuiltinTools: NotRequired[list[dict[str, Any]]]
+    systemTools: NotRequired[list[dict[str, Any]]]
+    systemPromptSections: NotRequired[list[dict[str, Any]]]
+    slashCommands: NotRequired[dict[str, Any]]
+    skills: NotRequired[dict[str, Any]]  # skill usage with frontmatter breakdown
+    messageBreakdown: NotRequired[dict[str, Any]]  # message tokens by type
+    apiUsage: NotRequired[dict[str, Any] | None]
+```
+
+Each `ContextUsageCategory` entry carries `name`, `tokens`, `color`, and an optional `isDeferred` flag. `totalTokens` is the session's current context usage, and `maxTokens` is the window that usage is measured against. That window is the model's context window, or the lower auto-compaction window when one applies, and `rawMaxTokens` carries the same value as `maxTokens`. `apiUsage` holds the usage from the latest API response, not a running total for the session. Claude Code leaves the optional `deferredBuiltinTools`, `systemTools`, and `systemPromptSections` keys unset, so expect them to be absent even though the type declares them.
 
 ### `SdkPluginConfig`
 
@@ -2452,6 +2482,8 @@ asyncio.run(main())
 
 Documentation of input/output schemas for all built-in Claude Code tools. While the Python SDK doesn't export these as types, they represent the structure of tool inputs and outputs in messages.
 
+Each output shown is the value you read from [`UserMessage.tool_use_result`](#usermessage) for that tool. Key names appear exactly as Claude Code emits them. A key annotated `| None` with a "present when" or "optional" comment is omitted when it doesn't apply.
+
 ### Agent
 
 **Tool name:** `Agent`. The previous name `Task` is still accepted as an alias, and the `tools` list in the init [`SystemMessage`](#systemmessage) reports this tool as `Task` for backward compatibility.
@@ -2692,9 +2724,30 @@ When Monitor runs a command, it follows the same permission rules as Bash; a Web
 
 ```python theme={null}
 {
-    "message": str,  # Confirmation message
-    "replacements": int,  # Number of replacements made
-    "file_path": str,  # File path that was edited
+    "filePath": str,  # The file that was edited
+    "oldString": str,  # The text that was replaced
+    "newString": str,  # The text that replaced it
+    "originalFile": str | None,  # File contents before the edit
+    "structuredPatch": [  # Diff hunks for the change
+        {
+            "oldStart": int,
+            "oldLines": int,
+            "newStart": int,
+            "newLines": int,
+            "lines": list[str],
+        }
+    ],
+    "userModified": bool,  # Whether the user changed the proposed edit before accepting it
+    "replaceAll": bool,  # Whether all occurrences were replaced
+    "gitDiff": {  # Optional git diff summary for the file
+        "filename": str,
+        "status": "modified" | "added",
+        "additions": int,
+        "deletions": int,
+        "changes": int,
+        "patch": str,
+        "repository": str | None,  # GitHub owner/repo when available
+    } | None,
 }
 ```
 
@@ -2712,23 +2765,92 @@ When Monitor runs a command, it follows the same permission rules as Bash; a Web
 }
 ```
 
-**Output (Text files):**
+The output takes one of the following shapes depending on what Claude read. Check the `type` key to tell them apart.
+
+**Output (type: `"text"`):**
 
 ```python theme={null}
 {
-    "content": str,  # File contents with line numbers
-    "total_lines": int,  # Total number of lines in file
-    "lines_returned": int,  # Lines actually returned
+    "type": "text",
+    "file": {
+        "filePath": str,  # The file that was read
+        "content": str,  # The returned content
+        "numLines": int,  # Number of lines in the returned content
+        "startLine": int,  # Line number the content starts at
+        "totalLines": int,  # Total number of lines in the file
+        "truncatedByTokenCap": bool | None,  # Present and True when a whole-file read exceeded the token cap and content is the first page
+    },
 }
 ```
 
-**Output (Images):**
+**Output (type: `"image"`):**
 
 ```python theme={null}
 {
-    "image": str,  # Base64 encoded image data
-    "mime_type": str,  # Image MIME type
-    "file_size": int,  # File size in bytes
+    "type": "image",
+    "file": {
+        "base64": str,  # Base64-encoded image data
+        "type": "image/jpeg" | "image/png" | "image/gif" | "image/webp",  # Image MIME type
+        "originalSize": int,  # Original file size in bytes
+        "dimensions": {  # Optional sizing info for coordinate mapping
+            "originalWidth": int | None,  # Optional; original width in pixels
+            "originalHeight": int | None,  # Optional; original height in pixels
+            "displayWidth": int | None,  # Optional; width after resizing
+            "displayHeight": int | None,  # Optional; height after resizing
+        } | None,
+    },
+}
+```
+
+**Output (type: `"notebook"`):**
+
+```python theme={null}
+{
+    "type": "notebook",
+    "file": {
+        "filePath": str,  # The notebook that was read
+        "cells": list,  # Notebook cells
+    },
+}
+```
+
+**Output (type: `"pdf"`):**
+
+```python theme={null}
+{
+    "type": "pdf",
+    "file": {
+        "filePath": str,  # The PDF that was read
+        "base64": str,  # Base64-encoded PDF data
+        "originalSize": int,  # File size in bytes
+    },
+}
+```
+
+**Output (type: `"parts"`):**
+
+```python theme={null}
+{
+    "type": "parts",
+    "file": {
+        "filePath": str,  # The PDF that was read
+        "originalSize": int,  # File size in bytes
+        "count": int,  # Number of pages extracted as images
+        "outputDir": str,  # Directory containing the extracted page images
+    },
+    "firstPage": int | None,  # Optional document page number of the first extracted page
+}
+```
+
+**Output (type: `"file_unchanged"`):**
+
+```python theme={null}
+{
+    "type": "file_unchanged",  # The file is unchanged since Claude last read it in this session, so the content isn't repeated
+    "file": {
+        "filePath": str,
+    },
+    "source": "seeded" | None,  # Present when the earlier copy came from a CLAUDE.md or memory file loaded at startup rather than a Read call
 }
 ```
 
@@ -2749,9 +2871,29 @@ When Monitor runs a command, it follows the same permission rules as Bash; a Web
 
 ```python theme={null}
 {
-    "message": str,  # Success message
-    "bytes_written": int,  # Number of bytes written
-    "file_path": str,  # File path that was written
+    "type": "create" | "update",  # Whether the write created a new file or overwrote an existing one
+    "filePath": str,  # The file that was written
+    "content": str,  # The content that was written
+    "structuredPatch": [  # Diff hunks; empty for a new file, when nothing changed, or when Claude Code skipped the diff
+        {
+            "oldStart": int,
+            "oldLines": int,
+            "newStart": int,
+            "newLines": int,
+            "lines": list[str],
+        }
+    ],
+    "originalFile": str | None,  # Previous content; None for a new file or when the previous content was too large to include
+    "gitDiff": {  # Optional git diff summary for the file
+        "filename": str,
+        "status": "modified" | "added",
+        "additions": int,
+        "deletions": int,
+        "changes": int,
+        "patch": str,
+        "repository": str | None,  # GitHub owner/repo when available
+    } | None,
+    "userModified": bool | None,  # Optional; whether the user edited the proposed content before accepting it
 }
 ```
 
@@ -2772,11 +2914,16 @@ When Monitor runs a command, it follows the same permission rules as Bash; a Web
 
 ```python theme={null}
 {
-    "matches": list[str],  # Array of matching file paths
-    "count": int,  # Number of matches found
-    "search_path": str,  # Search directory used
+    "durationMs": int,  # Time taken to run the search, in milliseconds
+    "numFiles": int,  # Number of paths returned, after any truncation
+    "filenames": list[str],  # Matching file paths
+    "truncated": bool,  # Whether the results were truncated at the 100-file limit
+    "totalMatches": int | None,  # Optional total number of matching files before truncation; a lower bound when countIsComplete is False
+    "countIsComplete": bool | None,  # Optional; whether totalMatches is exact
 }
 ```
+
+`totalMatches` and `countIsComplete` require Claude Code v2.1.191 or later.
 
 ### Grep
 
@@ -2796,36 +2943,34 @@ When Monitor runs a command, it follows the same permission rules as Bash; a Web
     "-B": int | None,  # Lines to show before each match
     "-A": int | None,  # Lines to show after each match
     "-C": int | None,  # Lines to show before and after
+    "context": int | None,  # Lines to show before and after; -C is an alias
+    "-o": bool | None,  # Print only the matched parts of each line
     "head_limit": int | None,  # Limit output to first N lines/entries
+    "offset": int | None,  # Skip first N lines/entries before applying head_limit
     "multiline": bool | None,  # Enable multiline mode
 }
 ```
 
-**Output (content mode):**
+**Output:**
 
 ```python theme={null}
 {
-    "matches": [
-        {
-            "file": str,
-            "line_number": int | None,
-            "line": str,
-            "before_context": list[str] | None,
-            "after_context": list[str] | None,
-        }
-    ],
-    "total_matches": int,
+    "mode": "content" | "files_with_matches" | "count" | None,  # The output mode that was used
+    "numFiles": int,  # Number of files in the result; always 0 in content mode
+    "filenames": list[str],  # Matching files in files_with_matches mode; empty in the other modes
+    "content": str | None,  # Matching lines in content mode, or per-file counts in count mode
+    "numLines": int | None,  # Number of lines in content, present in content mode
+    "numMatches": int | None,  # Total match count, present in count mode
+    "totalFiles": int | None,  # Optional total before head_limit and offset, in files_with_matches mode
+    "totalLines": int | None,  # Optional total before head_limit and offset, in content mode
+    "appliedLimit": int | None,  # Present when head_limit truncated the result
+    "appliedOffset": int | None,  # Present when an offset was applied
 }
 ```
 
-**Output (files\_with\_matches mode):**
+Grep returns this dict shape in each output mode. Which optional keys are present depends on `output_mode`.
 
-```python theme={null}
-{
-    "files": list[str],  # Files containing matches
-    "count": int,  # Number of files with matches
-}
-```
+`totalFiles` requires Claude Code v2.1.208 or later. `totalLines` requires Claude Code v2.1.210 or later.
 
 ### NotebookEdit
 
@@ -2847,10 +2992,16 @@ When Monitor runs a command, it follows the same permission rules as Bash; a Web
 
 ```python theme={null}
 {
-    "message": str,  # Success message
-    "edit_type": "replaced" | "inserted" | "deleted",  # Type of edit performed
-    "cell_id": str | None,  # Cell ID that was affected
-    "total_cells": int,  # Total cells in notebook after edit
+    "new_source": str,  # The source written to the cell
+    "old_source": str | None,  # Previous cell source, present for replace and delete
+    "cell_id": str | None,  # ID of the edited cell, when available
+    "cell_type": "code" | "markdown",  # The cell type
+    "language": str,  # The notebook's programming language
+    "edit_mode": str,  # The edit mode that was used
+    "error": str | None,  # Error message when the operation failed
+    "notebook_path": str,  # The notebook file
+    "original_file": str,  # Notebook content before the edit
+    "updated_file": str,  # Notebook content after the edit
 }
 ```
 
@@ -2942,8 +3093,20 @@ When Monitor runs a command, it follows the same permission rules as Bash; a Web
 
 ```python theme={null}
 {
-    "message": str,  # Success message
-    "stats": {"total": int, "pending": int, "in_progress": int, "completed": int},
+    "oldTodos": [  # The todo list before the update
+        {
+            "content": str,
+            "status": "pending" | "in_progress" | "completed",
+            "activeForm": str,
+        }
+    ],
+    "newTodos": [  # The todo list after the update
+        {
+            "content": str,
+            "status": "pending" | "in_progress" | "completed",
+            "activeForm": str,
+        }
+    ],
 }
 ```
 
@@ -3101,8 +3264,13 @@ A `disallowed_tools` entry or a deny rule that still names either name is ignore
 
 ```python theme={null}
 {
-    "message": str,  # Confirmation message
-    "approved": bool | None,  # Whether user approved the plan
+    "plan": str | None,  # The plan that was presented to the user
+    "isAgent": bool,  # True when a subagent called the tool
+    "filePath": str | None,  # Present when the plan was saved to a file
+    "hasTaskTool": bool | None,  # Optional; whether the Agent tool is available in the current context
+    "planWasEdited": bool | None,  # Present and True when the user edited the plan before approving
+    "awaitingLeaderApproval": bool | None,  # Present and True when a teammate sent the plan to the team lead for approval
+    "requestId": str | None,  # Optional ID of that approval request
 }
 ```
 
@@ -3118,21 +3286,20 @@ A `disallowed_tools` entry or a deny rule that still names either name is ignore
 }
 ```
 
+The result is a list rather than a dict, so `tool_use_result` holds a `list` for this tool.
+
 **Output:**
 
 ```python theme={null}
-{
-    "resources": [
-        {
-            "uri": str,
-            "name": str,
-            "description": str | None,
-            "mimeType": str | None,
-            "server": str,
-        }
-    ],
-    "total": int,
-}
+[  # One entry per resource
+    {
+        "uri": str,  # Resource URI
+        "name": str,  # Resource name
+        "mimeType": str | None,  # Optional MIME type
+        "description": str | None,  # Optional description
+        "server": str,  # Server that provides this resource
+    }
+]
 ```
 
 ### ReadMcpResource
@@ -3153,9 +3320,14 @@ A `disallowed_tools` entry or a deny rule that still names either name is ignore
 ```python theme={null}
 {
     "contents": [
-        {"uri": str, "mimeType": str | None, "text": str | None, "blob": str | None}
+        {
+            "uri": str,  # Resource URI
+            "mimeType": str | None,  # Optional MIME type
+            "text": str | None,  # Text content, or a note about the binary content
+            "blobSavedTo": str | None,  # Present when Claude Code saved binary content to disk; path of the saved file
+        }
     ],
-    "server": str,
+    "error": str | None,  # Present when the server couldn't read the resource
 }
 ```
 

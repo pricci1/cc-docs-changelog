@@ -43,7 +43,7 @@ Prompt cache (main):   14 requests · 91% of input tokens from cache · 2 misses
 
 The misses, expected rebuilds, and warm or cold parts of the line mean the following:
 
-* **Misses**: requests that re-processed content the cache already held, with the time of the last miss and how many tokens those requests wrote back to the cache. Claude Code counts a request as a miss when the request re-processed more than 5% and at least 2,000 tokens of what it could have read from cache. [Actions that invalidate the cache](/docs/en/prompt-caching#actions-that-invalidate-the-cache) lists the usual causes. When Claude Code can identify a likely cause for the last miss, the line names it too, for example `likely cause: tool definitions changed`. The likely-cause text requires Claude Code v2.1.260 or later.
+* **Misses**: requests that re-processed content the cache already held, with the time of the last miss and how many tokens those requests wrote back to the cache. [Actions that invalidate the cache](/docs/en/prompt-caching#actions-that-invalidate-the-cache) lists the usual causes. When Claude Code can identify a likely cause for the last miss, the line names it too, for example `likely cause: tool definitions changed`. The likely-cause text requires Claude Code v2.1.260 or later.
 * **Expected rebuilds**: when Claude Code has itself just rewritten the conversation, by [compaction](/docs/en/prompt-caching#compacting-the-conversation) or by clearing old tool results from context, it counts the same kind of miss as an expected rebuild instead. This part appears only after at least one expected rebuild has happened.
 * **Warm or cold**: whether the cached prefix is still within its [cache lifetime](/docs/en/prompt-caching#cache-lifetime), with the TTL in effect. When the cache is cold, the line shows how long the session has been idle. When no response has reported cache tokens, the line ends with `no prompt caching reported by the API` instead.
 
@@ -225,7 +225,7 @@ The following strategies help you keep context small and reduce per-message cost
 Use `/usage` to check your current token usage, or [configure your status line](/docs/en/statusline#context-window-usage) to display it continuously.
 
 * **Clear between tasks**: Use `/clear` to start fresh when switching to unrelated work. Stale context wastes tokens on every subsequent message. Use `/rename` before clearing so you can easily find the session later, then `/resume` to return to it.
-* **Add custom compaction instructions**: `/compact Focus on code samples and API usage` tells Claude what to preserve during summarization. In a fresh session, `/compact` prints `Not enough messages to compact.` because there's no conversation history to summarize yet.
+* **Add custom compaction instructions**: `/compact Focus on code samples and API usage` tells Claude what to preserve during summarization.
 
 You can also customize compaction behavior in your CLAUDE.md file at the root of your project:
 

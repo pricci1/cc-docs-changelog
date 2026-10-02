@@ -100,6 +100,15 @@ When someone shares an artifact with you, you can have Claude read it: give Clau
 
 Claude reads a page someone else wrote the way it reads a web page with [WebFetch](/docs/en/tools-reference#webfetch-tool-behavior): it gets a summary of what it asked about rather than the raw page, and the summary reports instructions written into the page instead of relaying them. Claude Code also saves the page's full source to a local file, which Claude can open when it needs the exact content, such as to republish the artifact as an [editor](#let-someone-edit-with-you).
 
+Claude Code asks for your approval before Claude reads the artifact in these cases, in addition to any prompt your permission mode or rules call for:
+
+* **Cloud session without network access**: for a [cloud environment](/docs/en/cloud-environments#access-levels), that's the **None** level. In [auto mode](/docs/en/permission-modes#eliminate-prompts-with-auto-mode), the classifier can approve instead; in a [Cowork](https://claude.com/product/cowork) session, the approval is yours alone.
+* **Another organization's public artifact**: Claude Code asks you first, even in auto mode. Where Claude Code can't ask you, such as in `bypassPermissions` mode, Claude can't read the artifact. Claude can read these artifacts only while [feature-flag fetching](/docs/en/env-vars#features-that-need-feature-flag-fetching) is on.
+* **Unconfirmed owner or network setting**: when Claude Code can't confirm who made the artifact, or can't confirm a cloud session's network setting, it asks, and your approval covers that one request.
+* **Plan mode, or feature-flag fetching turned off**: in [plan mode](/docs/en/permission-modes#analyze-before-you-edit-with-plan-mode), or if you turned [feature-flag fetching](/docs/en/env-vars#features-that-need-feature-flag-fetching) off, Claude Code asks before the Artifact tool reads an artifact someone else in your organization made.
+
+When Claude reads the artifact with WebFetch, WebFetch's own [prompting rules](/docs/en/tools-reference#webfetch-tool-behavior) still apply.
+
 ## Collect comments on an artifact
 
 When you share an artifact within your organization, the people you share it with can leave comments on the page, and you can have Claude read those comments and reply to them. You need Claude Code v2.1.221 or later. Claude reads the comments in two cases:
@@ -340,7 +349,7 @@ To turn artifacts off for your own sessions regardless of your organization's se
 | [Environment variable](/docs/en/env-vars) | Set `CLAUDE_CODE_DISABLE_ARTIFACT=1` |
 | [Permission rule](/docs/en/permissions) | Add `Artifact` to `permissions.deny` |
 
-Once you turn artifacts off in a [`--settings`](/docs/en/cli-reference#cli-flags) file or with `CLAUDE_CODE_DISABLE_ARTIFACT`, or your administrator turns them off in [managed settings](/docs/en/server-managed-settings), no settings file turns them back on. Before v2.1.242, a file higher in the [precedence stack](/docs/en/settings#settings-precedence) could turn artifacts back on even when a lower-precedence file set `"enableArtifact": false`.
+Once you turn artifacts off in a [`--settings`](/docs/en/cli-reference#cli-flags) file or with `CLAUDE_CODE_DISABLE_ARTIFACT`, or your administrator turns them off in [managed settings](/docs/en/server-managed-settings), no settings file turns them back on.
 
 You can also set `"enableArtifact": false` in a project's `.claude/settings.json` or `.claude/settings.local.json` to turn artifacts off for sessions in that project. An `"enableArtifact": true` in either file doesn't turn them back on. Honoring the key in project and local settings requires Claude Code v2.1.242 or later.
 
