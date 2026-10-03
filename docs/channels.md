@@ -32,7 +32,7 @@ Each supported channel is a plugin that requires [Bun](https://bun.sh). For a ha
       </Step>
 
       <Step title="Install the plugin">
-        In Claude Code, run:
+        Start Claude Code by running `claude` in your terminal, then enter this at its prompt:
 
         ```
         /plugin install telegram@claude-plugins-official
@@ -110,7 +110,7 @@ Each supported channel is a plugin that requires [Bun](https://bun.sh). For a ha
       </Step>
 
       <Step title="Install the plugin">
-        In Claude Code, run:
+        Start Claude Code by running `claude` in your terminal, then enter this at its prompt:
 
         ```
         /plugin install discord@claude-plugins-official
@@ -175,7 +175,7 @@ Each supported channel is a plugin that requires [Bun](https://bun.sh). For a ha
       </Step>
 
       <Step title="Install the plugin">
-        In Claude Code, run:
+        Start Claude Code by running `claude` in your terminal, then enter this at its prompt:
 
         ```
         /plugin install imessage@claude-plugins-official
@@ -232,7 +232,7 @@ To try the fakechat demo, you'll need:
 
 <Steps>
   <Step title="Install the fakechat channel plugin">
-    Start a Claude Code session and run the install command:
+    Start Claude Code by running `claude` in your terminal, then enter the install command at its prompt:
 
     ```text theme={null}
     /plugin install fakechat@claude-plugins-official
@@ -335,7 +335,7 @@ By default, any plugin on the Anthropic-maintained allowlist can register as a c
 
 If you set an empty array, you block all channel plugins from the allowlist, but `--dangerously-load-development-channels` can still bypass that block for local testing. To block channels entirely including the development flag, leave `channelsEnabled` unset instead.
 
-This setting requires `channelsEnabled: true`. If a user passes a plugin to `--channels` that isn't on your list, Claude Code starts normally but the channel doesn't register, and the startup notice explains that the plugin isn't on the organization's approved list. If you set `MCP_PROTOCOL_NEGOTIATION` to `auto` on the v2 MCP client runtime, a channel can also fail to register because Claude Code [doesn't register a channel server that negotiates protocol revision 2026-07-28](/docs/en/mcp#push-messages-with-channels).
+This setting requires `channelsEnabled: true`. If a user passes a plugin to `--channels` that isn't on your list, Claude Code starts normally but the channel doesn't register, and the startup notice explains that the plugin isn't on the organization's approved list. On the v2 MCP client runtime, a channel can also fail to register because Claude Code [doesn't register a channel server that negotiates protocol revision 2026-07-28](/docs/en/mcp#push-messages-with-channels).
 
 ## Research preview
 
